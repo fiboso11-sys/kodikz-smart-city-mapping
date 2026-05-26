@@ -1,41 +1,37 @@
-# Kodikz Smart City — Street Mapping Dashboard
+# Kodikz Dubai Mapping
 
-Premium **frontend-only** Dubai Municipality fleet command center. No backend, database, or Docker required.
+Dubai Municipality **Smart City GIS mapping** vehicle monitor — 24/7 visibility for survey fleets. Kodikz provides tracking hardware, this web app, and ongoing maintenance.
 
-## Run
+## Live app
+
+**Production:** [https://kodikz-smart-city-mapping.vercel.app](https://kodikz-smart-city-mapping.vercel.app)
+
+| Route | Purpose |
+|-------|---------|
+| `/` | Landing page |
+| `/command` | Live Map |
+| `/routes` | Routes |
+| `/violations` | Violations |
+| `/analytics` | Analytics |
+| `/companies` | Companies |
+| `/vehicles` | Vehicles |
+| `/playback` | Playback |
+
+## Local development
 
 ```bash
 pnpm install
-pnpm seed    # generates public/data/*.json (60 vehicles, 50 companies, routes, history)
+pnpm seed    # optional: regenerate public/data/*.json
 pnpm dev     # http://localhost:3000
 ```
 
-**No map API key required** — uses free [OpenFreeMap](https://openfreemap.org/) tiles (OpenStreetMap data).
+No map API key — uses [OpenFreeMap](https://openfreemap.org/) tiles.
 
-## Architecture
+## Deploy (Vercel)
 
-```
-src/providers/
-  igps-provider.ts      → IGPSProvider interface
-  simulator-provider.ts → 60 vehicles, 3s tick (default)
-  teltonika-provider.ts → stub for future hardware
-  factory.ts            → swap provider without UI changes
-
-public/data/*.json      → seed data (companies, vehicles, routes, history)
-src/store/              → Zustand + localStorage persistence
-src/lib/geo.ts          → movement simulation
-src/lib/violations.ts   → client-side rule engine
+```bash
+pnpm run build
+npx vercel deploy --prod --scope fiboso11-sys-projects
 ```
 
-## Features
-
-- Live Mapbox map with 60 simulated vehicles
-- Route management (GeoJSON upload)
-- Violation engine (OUT_OF_ROUTE, NO_SIGNAL, OVERSPEED, IDLE)
-- Analytics dashboard
-- Company & vehicle management
-- Historical playback / time travel
-
-## Future Teltonika
-
-Set `providerKind` to `"teltonika"` in store — UI unchanged, `TeltonikaProvider` replaces `SimulatorProvider`.
+Project is linked as `kodikz-smart-city-mapping` on Vercel. Rename or add a custom domain in the [Vercel dashboard](https://vercel.com/fiboso11-sys-projects/kodikz-smart-city-mapping).
