@@ -1,37 +1,62 @@
 # Kodikz Dubai Mapping
 
-Dubai Municipality **Smart City GIS mapping** vehicle monitor — 24/7 visibility for survey fleets. Kodikz provides tracking hardware, this web app, and ongoing maintenance.
+Dubai Municipality Smart City **GIS mapping fleet monitor**.
 
-## Live app
+> **Current release:** [`v1.0-rc1`](RELEASE-v1.0-rc1.md) — *Kodikz Fleet Platform Pilot Release* (Release Candidate)
 
-**Production:** [https://kodikz-smart-city-mapping.vercel.app](https://kodikz-smart-city-mapping.vercel.app)
+## Project layout
 
-| Route | Purpose |
-|-------|---------|
-| `/` | Landing page |
-| `/command` | Live Map |
-| `/routes` | Routes |
-| `/violations` | Violations |
-| `/analytics` | Analytics |
-| `/companies` | Companies |
-| `/vehicles` | Vehicles |
-| `/playback` | Playback |
+| Folder | Purpose |
+|--------|---------|
+| **/** (root) | **Demo app** — simulated fleet, JSON seed, deployable to Vercel |
+| **`/frontend`** | **Production UI** — same design, polls live GPS from backend |
+| **`/backend`** | **Production GPS** — Teltonika TCP :5000 + Express API :3001 (VPS) |
 
-## Local development
+## Demo (no hardware)
 
 ```bash
 pnpm install
-pnpm seed    # optional: regenerate public/data/*.json
-pnpm dev     # http://localhost:3000
+pnpm seed
+pnpm dev
 ```
 
-No map API key — uses [OpenFreeMap](https://openfreemap.org/) tiles.
+Open http://localhost:3000 — simulator drives 60 vehicles.
 
-## Deploy (Vercel)
+## Production (Teltonika FMM130)
+
+### 1. Backend on VPS
 
 ```bash
-pnpm run build
-npx vercel deploy --prod --scope fiboso11-sys-projects
+cd backend
+npm install
+cp .env.example .env
+npm start
 ```
 
-Project is linked as `kodikz-smart-city-mapping` on Vercel. Rename or add a custom domain in the [Vercel dashboard](https://vercel.com/fiboso11-sys-projects/kodikz-smart-city-mapping).
+- Devices → `YOUR_VPS_IP:5000` (Codec 8)
+- API → `http://127.0.0.1:3000` (Nginx HTTPS public URL for Vercel)
+
+### 2. Frontend
+
+```bash
+cd frontend
+pnpm install
+cp .env.example .env.local
+# Edit NEXT_PUBLIC_GPS_API_URL=https://api.YOUR_DOMAIN
+pnpm dev
+```
+
+Map markers update every **2.5s** from `GET /vehicles`.
+
+## Data flow
+
+```
+Teltonika FMM130 → TCP :5000 → teltonika-parser → in-memory store → GET /vehicle(s) → Next.js map
+```
+
+## Live demo URLs
+
+- https://kodikz-dubai-mapping.vercel.app (demo build from root)
+
+**Frontend** → deploy `frontend/` folder on **Vercel**.  
+**Backend** → Ubuntu VPS only — see `backend/DEPLOY.md` (PM2 + Nginx).

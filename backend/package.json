@@ -1,0 +1,25 @@
+{
+  "name": "kodikz-gps-backend",
+  "version": "1.0.0-rc.1",
+  "private": true,
+  "description": "Teltonika TCP + REST API for Kodikz Dubai Mapping production",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "simulate": "node scripts/simulate-device.js",
+    "pm2:start": "pm2 start ecosystem.config.cjs --env production",
+    "health": "node -e \"require('http').get('http://127.0.0.1:'+(process.env.API_PORT||3000)+'/health',r=>{let d='';r.on('data',c=>d+=c);r.on('end',()=>{console.log(r.statusCode,d);process.exit(r.statusCode===200?0:1)})}).on('error',e=>{console.error(e);process.exit(1)})\"",
+    "pm2:restart": "pm2 restart kodikz-gps",
+    "pm2:logs": "pm2 logs kodikz-gps"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.6.1",
+    "express": "^5.1.0",
+    "teltonika-parser": "^0.0.15"
+  }
+}

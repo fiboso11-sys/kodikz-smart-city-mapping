@@ -1,0 +1,84 @@
+# =============================================================================
+# Nginx — Kodikz GPS HTTP API reverse proxy (example)
+# =============================================================================
+# Purpose: expose HTTPS for the Vercel frontend; proxy to Node on 127.0.0.1:3000
+#
+# Teltonika TCP (port 5000) is NOT handled by Nginx — open on UFW for devices only.
+#
+# Install (Ubuntu 22.04):
+#   sudo cp deploy/nginx.conf.example /etc/nginx/sites-available/kodikz-gps-api
+#   sudo sed -i 's/api.yourdomain.com/api.REAL_DOMAIN/g' /etc/nginx/sites-available/kodikz-gps-api
+#   sudo ln -sf /etc/nginx/sites-available/kodikz-gps-api /etc/nginx/sites-enabled/
+#   sudo nginx -t && sudo systemctl reload nginx
+#   sudo certbot --nginx -d api.REAL_DOMAIN
+# =============================================================================
+
+upstream kodikz_gps_api {
+    server 127.0.0.1:3000;
+    keepalive 16;
+}
+
+# Rate limit (optional — adjust for your fleet size)
+limit_req_zone $binary_remote_addr zone=kodikz_gps_api:10m rate=30r/s;
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name api.yourdomain.com;
+
+    # Let's Encrypt HTTP-01
+    location /.well-known/acme-challenge/ {
+        root /var/www/html;
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name api.yourdomain.com;
+
+    # certbot --nginx fills these paths after first certificate issue:
+    # ssl_certificate     /etc/letsencrypt/live/api.yourdomain.com/fullchain.pem;
+    # ssl_certificate_key /etc/letsencrypt/live/api.yourdomain.com/privkey.pem;
+    # include /etc/letsencrypt/options-ssl-nginx.conf;
+    # ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+
+    # Security headers (API only — no HTML)
+    add_header X-Content-Type-Options nosniff always;
+    add_header X-Frame-Options DENY always;
+    add_header Referrer-Policy strict-origin-when-cross-origin always;
+
+    # Health check — no rate limit (for load balancers / uptime monitors)
+    location = /health {
+        proxy_pass http://kodikz_gps_api;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Connection "";
+        access_log off;
+    }
+
+    location / {
+        limit_req zone=kodikz_gps_api burst=60 nodelay;
+
+        proxy_pass http://kodikz_gps_api;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Connection "";
+
+        proxy_connect_timeout 10s;
+        proxy_send_timeout 30s;
+        proxy_read_timeout 30s;
+
+        # CORS is handled by Express — do not duplicate here unless required
+    }
+}
