@@ -1,17 +1,30 @@
 {
   "name": "kodikz-gps-backend",
-  "version": "1.0.0-rc.1",
+  "version": "2.0.0",
+  "description": "Production IoT GPS backend for Teltonika FMM130 — TCP Codec 8, REST API, MongoDB, Socket.IO",
   "private": true,
-  "description": "Teltonika TCP + REST API for Kodikz Dubai Mapping production",
   "main": "server.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fiboso11-sys/kodikz-gps-backend.git"
+  },
+  "keywords": [
+    "teltonika",
+    "fmm130",
+    "gps",
+    "fleet-tracking",
+    "codec8",
+    "socket.io",
+    "docker"
+  ],
+  "license": "UNLICENSED",
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
-    "simulate": "node scripts/simulate-device.js",
-    "pm2:start": "pm2 start ecosystem.config.cjs --env production",
-    "health": "node -e \"require('http').get('http://127.0.0.1:'+(process.env.API_PORT||3000)+'/health',r=>{let d='';r.on('data',c=>d+=c);r.on('end',()=>{console.log(r.statusCode,d);process.exit(r.statusCode===200?0:1)})}).on('error',e=>{console.error(e);process.exit(1)})\"",
-    "pm2:restart": "pm2 restart kodikz-gps",
-    "pm2:logs": "pm2 logs kodikz-gps"
+    "docker:up": "docker compose up -d --build",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f backend",
+    "health": "node -e \"const p=process.env.PORT||3000;require('http').get('http://127.0.0.1:'+p+'/health',r=>{let d='';r.on('data',c=>d+=c);r.on('end',()=>{console.log(r.statusCode,d);process.exit(r.statusCode===200?0:1)})}).on('error',e=>{console.error(e);process.exit(1)})\""
   },
   "engines": {
     "node": ">=18"
@@ -20,6 +33,8 @@
     "cors": "^2.8.5",
     "dotenv": "^16.6.1",
     "express": "^5.1.0",
+    "mongoose": "^8.9.5",
+    "socket.io": "^4.8.1",
     "teltonika-parser": "^0.0.15"
   }
 }

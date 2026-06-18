@@ -1,8 +1,8 @@
 {
-  "name": "Kodikz Dubai Mapping",
-  "short_name": "Kodikz Dubai",
-  "description": "Dubai Municipality Smart City GIS mapping fleet monitor",
-  "start_url": "/",
+  "name": "Dubai Street Mapping Monitoring System",
+  "short_name": "Dubai GISCD",
+  "description": "Dubai Municipality GISCD — Street Mapping Monitoring & Compliance Platform",
+  "start_url": "/dashboard",
   "display": "standalone",
   "background_color": "#030712",
   "theme_color": "#030712",

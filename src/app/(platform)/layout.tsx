@@ -1,10 +1,13 @@
 import { PlatformShell } from "@/components/layout/platform-shell";
-import { AppInitializer } from "@/components/app-initializer";
+import { QueryProvider } from "@/lib/providers/query-provider";
+import { LiveGpsProvider } from "@/services/socket/live-gps";
 
 export default function PlatformLayout({ children }: { children: React.ReactNode }) {
   return (
-    <AppInitializer>
-      <PlatformShell>{children}</PlatformShell>
-    </AppInitializer>
+    <QueryProvider>
+      <LiveGpsProvider>
+        <PlatformShell>{children}</PlatformShell>
+      </LiveGpsProvider>
+    </QueryProvider>
   );
 }

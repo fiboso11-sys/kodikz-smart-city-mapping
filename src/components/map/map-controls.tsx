@@ -4,7 +4,7 @@ import { useAppStore } from "@/store";
 import { useFilteredVehicles } from "@/hooks/use-filtered-vehicles";
 import { Button } from "@/components/ui/button";
 
-export function MapControls() {
+export function MapControls({ embedded = false }: { embedded?: boolean }) {
   const layers = useAppStore((s) => s.layers);
   const toggleLayer = useAppStore((s) => s.toggleLayer);
   const searchQuery = useAppStore((s) => s.searchQuery);
@@ -16,8 +16,12 @@ export function MapControls() {
   const count = useFilteredVehicles().length;
 
   return (
-    <div className="glass-panel space-y-4 rounded-xl p-4">
-      <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500">Layers & Filters</h3>
+    <div className={embedded ? "space-y-4 pt-4" : "glass-panel space-y-4 rounded-xl p-4"}>
+      {!embedded && (
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+          Layers & Filters
+        </h3>
+      )}
       <div className="flex flex-wrap gap-2">
         {(["vehicles", "routes", "violations"] as const).map((layer) => (
           <Button

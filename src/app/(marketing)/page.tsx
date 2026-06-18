@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
+import { APP_NAME, APP_TAGLINE } from "@/lib/config";
 import { LandingPage } from "@/components/landing/landing-page";
 
 export const metadata: Metadata = {
-  title: "Kodikz Dubai Mapping",
-  description:
-    "24/7 monitoring for Dubai Municipality Smart City GIS mapping vehicles. Live Map, Routes, Violations, Analytics, Companies, Vehicles, and Playback.",
+  title: APP_NAME,
+  description: APP_TAGLINE,
 };
 
 export default function HomePage() {

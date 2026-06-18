@@ -1,349 +1,385 @@
-# Kodikz GPS Backend — Integration Contract
+# kodikz-gps-backend
 
-This document defines the **HTTP API** and **Teltonika TCP** interface for external teams integrating with the Kodikz GPS backend.
+Production-grade **IoT GPS fleet tracking backend** for **Teltonika FMM130** devices. Ingests live positions over TCP (Codec 8), exposes REST APIs and **Socket.IO** real-time updates, and persists data in **MongoDB** (with in-memory fallback when MongoDB is unavailable).
 
-| Channel | Default | Purpose |
-|---------|---------|---------|
-| **HTTP API** | Port **3000** (HTTPS via Nginx in production) | Read latest vehicle positions |
-| **Device TCP** | Port **5000** | Teltonika trackers send GPS (Codec 8) |
+Designed for **VPS deployment** behind Nginx at `api-kodikz.giantphoenixllc.com` — not Vercel.
 
-> **Base URL (production):** `https://api.<your-domain>` (Nginx → `127.0.0.1:3000`)  
-> **Base URL (local):** `http://127.0.0.1:3000`
-
-All HTTP responses use **`Content-Type: application/json`**.  
-Only **`GET`** methods are supported on the public API.
+| | |
+|---|---|
+| **Production API** | `https://api-kodikz.giantphoenixllc.com` |
+| **TCP (devices)** | VPS public IP, port **5000** |
+| **HTTP (API)** | Port **3000** (Nginx TLS in front) |
 
 ---
 
-## HTTP API
+## Features
 
-### `GET /vehicle`
+| Capability | Description |
+|------------|-------------|
+| **TCP server** | Teltonika IMEI handshake (`0x01` ACK), multi-device, buffer limits |
+| **Codec 8** | AVL parsing via `teltonika-parser` (8E / JSON **not** supported) |
+| **REST API** | Latest position, fleet list, GPS history (default 50 points) |
+| **MongoDB** | Latest document per IMEI + append-only history |
+| **Socket.IO** | `location_update` event on every GPS fix |
+| **Docker** | Optional `docker compose up -d` |
+| **Security** | CORS, rate limiting, optional API key, malformed packet isolation |
 
-Returns the **latest known position** for one device.
+---
 
-#### Query parameters
+## Architecture
 
-| Parameter | Required | Description |
-|-----------|----------|-------------|
-| `imei` | No | 8–20 digit device IMEI. If omitted, returns the most recently updated device in the store. |
-
-#### Request examples
-
-```http
-GET /vehicle HTTP/1.1
-Host: api.example.com
+```
+  Teltonika FMM130 (Codec 8, TCP :5000)
+           │
+           ▼
+  ┌────────────────────────────────────┐
+  │  backend (Node.js)                 │
+  │  tcp/server.js      → parser       │
+  │  services/locationStore → MongoDB  │
+  │  api/routes.js      :3000          │
+  │  socket/socket.js   location_update│
+  └──────────────┬─────────────────────┘
+                 │
+       Nginx :443 (api-kodikz.giantphoenixllc.com)
+                 │
+       Frontend map app (REST + Socket.IO)
 ```
 
-```http
-GET /vehicle?imei=352093089674033 HTTP/1.1
-Host: api.example.com
+---
+
+## Project structure
+
+```
+backend/
+├── tcp/
+│   └── server.js          # Teltonika TCP :5000
+├── api/
+│   ├── routes.js          # REST endpoints
+│   └── middleware.js      # CORS, rate limit, API key
+├── services/
+│   ├── parser.js          # Codec 8 + IMEI handshake
+│   ├── locationStore.js   # Memory + Mongo + Socket emit
+│   ├── logger.js
+│   └── runtime.js
+├── models/
+│   └── Location.js        # Mongoose latest + history
+├── socket/
+│   └── socket.js          # Socket.IO
+├── config/
+│   ├── index.js           # Env (PORT, TCP_PORT, DOMAIN, …)
+│   └── db.js              # Mongo connection
+├── app.js                 # HTTP + Socket bootstrap
+├── server.js              # Entry point
+├── package.json
+├── docker-compose.yml
+├── .env.example
+└── README.md
 ```
 
-#### Success response
+---
 
-| HTTP status | `200 OK` |
-|-------------|----------|
+## Quick start (Docker)
 
-**Response body** — single JSON object:
+### Prerequisites
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `imei` | `string` | Device IMEI (8–20 digits) |
-| `latitude` | `number` | WGS84 latitude (decimal degrees) |
-| `longitude` | `number` | WGS84 longitude (decimal degrees) |
-| `speed` | `number` | Speed in **km/h** |
-| `heading` | `number` | Course in degrees (`0`–`360`, clockwise from north) |
-| `timestamp` | `string` | ISO-8601 UTC time of the GPS fix from the device |
-| `ignition` | `boolean` \| `null` | IO 239 when present; else speed > 2 km/h → `true`; else `null` |
-| `batteryVoltage` | `number` \| `null` | Battery voltage in **volts** (IO 67, mV → V) |
-| `externalPower` | `boolean` \| `null` | External supply connected (IO 66, threshold ≥ 9 V) |
-| `gsmSignal` | `number` \| `null` | GSM signal strength **0–5** (IO 21) |
-| `satellites` | `number` \| `null` | GPS satellites in fix (AVL GPS block) |
-| `receivedAt` | `string` | ISO-8601 UTC time when the server stored this record |
+- Docker 24+ and Docker Compose v2
+- VPS with ports **5000** (TCP) and **443** (HTTPS API via Nginx) reachable
 
-#### Example response (`200 OK`)
+### Install
+
+```bash
+git clone https://github.com/fiboso11-sys/kodikz-gps-backend.git
+cd kodikz-gps-backend
+cp .env.example .env
+```
+
+Edit `.env` — set at minimum:
+
+```env
+DOMAIN=api-kodikz.giantphoenixllc.com
+PUBLIC_API_URL=https://api-kodikz.giantphoenixllc.com
+CORS_ORIGIN=https://your-frontend-domain.com
+MONGO_URI=mongodb://mongo:27017/kodikz
+```
+
+### Run
+
+```bash
+docker compose up -d
+```
+
+Verify:
+
+```bash
+curl -s http://localhost:3000/health
+docker compose logs -f backend
+```
+
+---
+
+## Quick start (VPS — Node.js, no Docker)
+
+Use this when deploying directly on Ubuntu/Debian with **PM2** or **systemd**.
+
+### 1. Install Node.js 20 LTS
+
+```bash
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt install -y nodejs
+```
+
+### 2. Clone and configure
+
+```bash
+git clone https://github.com/fiboso11-sys/kodikz-gps-backend.git
+cd kodikz-gps-backend
+cp .env.example .env
+nano .env
+```
+
+Example `.env` for production:
+
+```env
+NODE_ENV=production
+PORT=3000
+TCP_PORT=5000
+HOST=0.0.0.0
+MONGO_URI=mongodb://127.0.0.1:27017/kodikz
+DOMAIN=api-kodikz.giantphoenixllc.com
+PUBLIC_API_URL=https://api-kodikz.giantphoenixllc.com
+CORS_ORIGIN=https://your-frontend.vercel.app
+TRUST_PROXY=true
+```
+
+### 3. MongoDB (recommended)
+
+```bash
+sudo apt install -y mongodb-org   # or use Atlas connection string in MONGO_URI
+```
+
+If MongoDB is down at startup, the API still runs using **in-memory** storage until Mongo reconnects on restart.
+
+### 4. Install and start
+
+```bash
+npm install
+npm start
+```
+
+Health check:
+
+```bash
+curl -s http://127.0.0.1:3000/health
+```
+
+### 5. Process manager (PM2)
+
+```bash
+sudo npm install -g pm2
+pm2 start server.js --name kodikz-gps
+pm2 save
+pm2 startup
+```
+
+### 6. Firewall
+
+```bash
+sudo ufw allow 22/tcp
+sudo ufw allow 443/tcp
+sudo ufw allow 5000/tcp    # Teltonika devices only
+sudo ufw enable
+```
+
+Do **not** expose port 3000 publicly — Nginx proxies to `127.0.0.1:3000`.
+
+---
+
+## Nginx reverse proxy + domain
+
+Point DNS **A record** for `api-kodikz.giantphoenixllc.com` to your VPS IP.
+
+Example site config (full file: [`docs/nginx-reverse-proxy.conf`](docs/nginx-reverse-proxy.conf)):
+
+```nginx
+server {
+    listen 443 ssl http2;
+    server_name api-kodikz.giantphoenixllc.com;
+
+    ssl_certificate     /etc/letsencrypt/live/api-kodikz.giantphoenixllc.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/api-kodikz.giantphoenixllc.com/privkey.pem;
+
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+}
+```
+
+TLS:
+
+```bash
+sudo certbot --nginx -d api-kodikz.giantphoenixllc.com
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+---
+
+## Ports
+
+| Port | Protocol | Exposure | Purpose |
+|------|----------|----------|---------|
+| **5000** | TCP | Public (UFW) | Teltonika FMM130 device data |
+| **3000** | HTTP + WebSocket | Localhost only | REST API + Socket.IO |
+| **443** | HTTPS | Public (Nginx) | `api-kodikz.giantphoenixllc.com` |
+
+Do **not** expose MongoDB (27017) to the internet.
+
+---
+
+## REST API
+
+All responses are **JSON**.
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/health` | Service health (no API key) |
+| GET | `/vehicle` | All vehicles, or `?imei=` for one device |
+| GET | `/vehicle/:imei` | Latest position for IMEI |
+| GET | `/vehicles` | Fleet snapshot (alias) |
+| GET | `/history/:imei` | Last **50** points (`?limit=` max 500) |
+
+### Examples
+
+```bash
+curl -s https://api-kodikz.giantphoenixllc.com/health
+curl -s https://api-kodikz.giantphoenixllc.com/vehicle
+curl -s https://api-kodikz.giantphoenixllc.com/vehicle/352093089674033
+curl -s "https://api-kodikz.giantphoenixllc.com/history/352093089674033?limit=50"
+```
+
+### Sample location object
 
 ```json
 {
   "imei": "352093089674033",
-  "latitude": 25.07890743838007,
-  "longitude": 55.14736311372688,
-  "speed": 52.7,
-  "heading": 28.4,
-  "timestamp": "2026-06-02T13:25:24.812Z",
+  "latitude": 25.0789,
+  "longitude": 55.14736,
+  "speed": 52,
+  "timestamp": "2026-05-26T12:00:00.000Z",
+  "heading": 180,
   "ignition": true,
-  "batteryVoltage": 13.42,
+  "batteryVoltage": 12.4,
   "externalPower": true,
   "gsmSignal": 4,
   "satellites": 12,
-  "receivedAt": "2026-06-02T13:25:24.812Z"
-}
-```
-
-#### Error responses
-
-| HTTP status | When | Response body |
-|-------------|------|-----------------|
-| **`404 Not Found`** | No GPS data in store yet for the requested IMEI (or store is empty) | See below |
-| **`502` / connection errors** | Nginx cannot reach the Node process | Platform-specific (Nginx) |
-
-**`404 Not Found` example**
-
-```json
-{
-  "error": "No GPS data received yet",
-  "imei": "352093089674033"
-}
-```
-
-When `imei` was not passed in the query string, the `imei` field in the error body is `null`:
-
-```json
-{
-  "error": "No GPS data received yet",
-  "imei": null
-}
-```
-
-#### Integration notes
-
-- Poll interval used by Kodikz clients: **every 2 seconds**.
-- Data is **last-known-value** only; there is no history endpoint on this service.
-- CORS is enforced in production — your browser origin must be allow-listed via server `CORS_ORIGIN`.
-- Responses from live Teltonika devices and from server-side simulation mode are **identical** in shape.
-
----
-
-### `GET /vehicle/:imei`
-
-Returns the latest position for one device (path parameter).
-
-```http
-GET /vehicle/352093089674033 HTTP/1.1
-Host: api.example.com
-```
-
-Same JSON body and errors as `GET /vehicle?imei=…`.
-
----
-
-### `GET /vehicles` (fleet)
-
-Returns all devices with a stored position (latest per IMEI).
-
-#### Success response (`200 OK`)
-
-```json
-{
-  "vehicles": [
-    {
-      "imei": "352093089674033",
-      "latitude": 25.07890743838007,
-      "longitude": 55.14736311372688,
-      "speed": 52.7,
-      "heading": 28.4,
-      "timestamp": "2026-06-02T13:25:24.812Z",
-      "ignition": true,
-      "receivedAt": "2026-06-02T13:25:24.812Z"
-    }
-  ],
-  "count": 1
-}
-```
-
-Each element in `vehicles` uses the **same schema** as `GET /vehicle`.
-
----
-
-### `GET /health` (operations)
-
-Liveness / readiness for load balancers and monitoring.
-
-| HTTP status | Meaning |
-|-------------|---------|
-| `200` | HTTP and TCP listeners ready |
-| `503` | Process starting |
-
-```json
-{
-  "status": "ok",
-  "service": "kodikz-gps-backend",
-  "version": "1.0.0",
-  "environment": "production",
-  "timestamp": "2026-06-02T13:25:24.812Z",
-  "uptimeSec": 3600,
-  "checks": { "tcp": "up", "http": "up" },
-  "devices": 3,
-  "connectedDevices": 3,
-  "reportingDevices": 3,
-  "dataMode": "live",
-  "lastPacketReceivedAt": "2026-06-02T13:25:24.812Z",
-  "ports": { "tcp": 5000, "api": 3000 },
-  "protocol": {
-    "supported": ["Codec 8 (codec ID 0x08)"],
-    "notSupported": ["Codec 8 Extended / 8E (codec ID 0x8E)", "Codec JSON"],
-    "fmm130Parameter113Required": 0,
-    "verifyAvlCodecId": "0x08"
-  },
-  "warnings": [
-    "Teltonika Codec 8 Extended (0x8E) and Codec JSON are NOT supported.",
-    "FMM130 factory default is Codec 8 Extended — set Parameter 113 = 0 (Codec 8) in Configurator before connecting."
-  ]
+  "receivedAt": "2026-05-26T12:00:01.000Z"
 }
 ```
 
 ---
 
-## Device TCP interface (Teltonika)
+## Socket.IO (real-time)
 
-Hardware and device-configuration teams use this section. The HTTP API above reads from the same in-memory store populated by TCP (or by simulation mode on the server).
+```javascript
+import { io } from "socket.io-client";
 
-### FMM130 compatibility requirement (required before connect)
+const socket = io("https://api-kodikz.giantphoenixllc.com", {
+  path: "/socket.io",
+  transports: ["websocket", "polling"],
+});
 
-1. Open **Teltonika Configurator**
-2. **System → Data Protocol**
-3. Set **Parameter 113 = 0** → select **Codec 8**
-
-**Do not use:** Codec 8 Extended (8E) · Codec JSON
-
-| Backend support | |
-|-----------------|--|
-| Supported | Codec 8 (`0x08`) |
-| Not supported | Codec 8 Extended (`0x8E`), Codec JSON |
-
-After saving: **VPS public IP**, **TCP 5000**, **TCP**. Verify first AVL packet codec ID **`0x08`**.
-
-Full guide: [`docs/FMM130-CONFIGURATION.md`](./docs/FMM130-CONFIGURATION.md)
-
-### Requirements
-
-| Item | Value |
-|------|--------|
-| **Port** | **5000** (configurable via `TCP_PORT`) |
-| **Protocol** | **TCP** (plain, not TLS) |
-| **Codec** | **Teltonika Codec 8** (AVL data over TCP) |
-| **Compatible devices** | Teltonika FMM130 and other Codec 8 TCP devices |
-| **Firewall** | Inbound **TCP 5000** open on the VPS public IP or DNS name |
-| **Nginx** | Do **not** proxy this port — devices connect directly to the Node listener |
-
-### Connection lifecycle
-
-```
-┌──────────┐                              ┌──────────────┐
-│ Device   │                              │ Kodikz server│
-└────┬─────┘                              └──────┬───────┘
-     │  TCP connect (port 5000)                   │
-     │──────────────────────────────────────────>│
-     │  1. IMEI packet (see below)                │
-     │──────────────────────────────────────────>│
-     │  2. IMEI ACK (1 byte: 0x01)                │
-     │<──────────────────────────────────────────│
-     │  3. AVL Codec 8 packet(s)                  │
-     │──────────────────────────────────────────>│
-     │  4. AVL ACK (4 bytes, record count BE)     │
-     │<──────────────────────────────────────────│
-     │  (steps 3–4 repeat while connected)        │
-     │  TCP close / reconnect                     │
-     └────────────────────────────────────────────┘
+socket.on("location_update", (payload) => {
+  // { imei, latitude, longitude, speed, timestamp, ... }
+});
 ```
 
-### Step 1 — IMEI handshake (device → server)
+---
 
-First message on a **new TCP connection** must be the IMEI frame (not AVL).
-
-| Offset | Size | Content |
-|--------|------|---------|
-| 0 | 2 bytes | IMEI length **N** (big-endian uint16) |
-| 2 | N bytes | IMEI as **ASCII digits** (typically 15 characters) |
-
-**Example** (IMEI `352093089674033`, 15 bytes):
-
-```
-00 0F  33 35 32 30 39 33 30 38 39 36 37 34 30 33 33
-^^^^   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-length IMEI ASCII
-```
-
-Rules enforced by the server:
-
-- AVL preamble (`0x00000000` at offset 0) must **not** be sent as the first message.
-- IMEI length must be **8–20**.
-- IMEI must match `/^\d{8,20}$/`.
-
-### Step 2 — IMEI ACK (server → device)
-
-| Format | 1 byte: **`0x01`** |
-
-If the handshake is invalid, the server closes the connection without sending AVL ACKs.
-
-### Step 3 — AVL packet (device → server)
-
-Standard **Teltonika TCP Codec 8** frame:
-
-| Section | Description |
-|---------|-------------|
-| 4 bytes | Preamble `0x00000000` |
-| 4 bytes | Data field length (big-endian) |
-| N bytes | AVL data (Codec 8) |
-| 4 bytes | CRC-16 |
-
-The server buffers bytes until a full frame is received, parses GPS records, and updates the store used by `GET /vehicle`.
-
-Extracted fields per record:
-
-| Field | Source |
-|-------|--------|
-| `latitude` / `longitude` | GPS element |
-| `speed` | km/h |
-| `heading` | `angle` (degrees) |
-| `timestamp` | Record timestamp (ISO-8601 in API) |
-
-### Step 4 — AVL ACK (server → device)
-
-| Format | 4 bytes, **big-endian uint32** = number of AVL records accepted |
-
-The device should wait for this ACK before sending the next AVL packet (per Teltonika TCP spec).
-
-### Device configuration checklist
+## Teltonika FMM130 configuration
 
 | Setting | Value |
 |---------|--------|
-| Server host | VPS public IP or DNS (e.g. `api.example.com` if pointed at VPS) |
-| Server port | **5000** |
-| Protocol | TCP |
-| Data protocol | Codec 8 |
-| TLS | Off (plain TCP) |
+| **Server IP** | VPS public IP |
+| **Port** | **5000** |
+| **Protocol** | **TCP** |
+| **Parameter 113** | **0** (Codec 8) |
+| **Codec** | **Codec 8** — not Codec 8 Extended (8E) |
 
-### Operational notes
+Full guide: [`docs/FMM130-CONFIGURATION.md`](docs/FMM130-CONFIGURATION.md)
 
-- Multiple devices may connect concurrently; each connection is tracked by IMEI after handshake.
-- On parse errors, the server logs the error and clears its buffer for that socket; the device should reconnect.
-- When `SIMULATION_MODE=true` on the server, the TCP listener is **disabled**; HTTP responses still work from synthetic data.
-
----
-
-## Data flow summary
+### Expected logs
 
 ```
-Teltonika FMM130 ──TCP:5000 (Codec 8)──> In-memory store <── HTTP :3000
-                                              │
-                                              ├── GET /vehicle
-                                              └── GET /vehicles
+[TCP] Device connect {"remote":"..."}
+[TCP] IMEI received {"imei":"352093089674033",...}
+[TCP] Packet received {"imei":"...","bytes":...}
+[TCP] Parse success {"imei":"...","records":1,"lat":25.07,"lng":55.14,"speed":52}
 ```
 
 ---
 
-## Related documentation
+## Environment variables
 
-| Document | Audience |
-|----------|----------|
-| [`docs/FMM130-CONFIGURATION.md`](./docs/FMM130-CONFIGURATION.md) | Field ops — Codec 8 device setup |
-| [`docs/TELTONIKA-COMPATIBILITY.md`](./docs/TELTONIKA-COMPATIBILITY.md) | Integrators — codec support matrix |
-| [`DEPLOY.md`](./DEPLOY.md) | DevOps — Ubuntu, PM2, Nginx, firewall |
-| [`.env.example`](./.env.example) | Environment variables |
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PORT` | `3000` | HTTP API port |
+| `TCP_PORT` | `5000` | Teltonika TCP port |
+| `MONGO_URI` | — | MongoDB URI (empty = memory fallback) |
+| `DOMAIN` | `api-kodikz.giantphoenixllc.com` | Public API hostname |
+| `PUBLIC_API_URL` | `https://{DOMAIN}` | Advertised API URL |
+| `CORS_ORIGIN` | `*` | Allowed browser origins (comma-separated) |
+| `API_KEY` | (empty) | Optional auth for data routes |
+| `SIMULATION_MODE` | `false` | Disable TCP listener (API-only test) |
 
-## Versioning
+See [`.env.example`](.env.example) for the full list.
 
-API response fields are **additive** — new optional JSON fields may appear in minor releases. Clients should ignore unknown fields.
+---
 
-Service version is reported in `GET /health` → `version`.
+## Security
+
+- **Never commit** `.env` — listed in `.gitignore`
+- Set **`CORS_ORIGIN`** to your real frontend domain in production
+- Optional **`API_KEY`** for `/vehicle`, `/vehicles`, `/history` (not `/health`)
+- TCP: handshake timeout, max buffer size; bad packets logged and isolated — process does not crash
+- Rate limiting per client IP on HTTP routes
+
+---
+
+## Operations
+
+```bash
+# Docker logs
+docker compose logs -f backend
+
+# PM2
+pm2 logs kodikz-gps
+pm2 restart kodikz-gps
+
+# Upgrade
+git pull && npm install && pm2 restart kodikz-gps
+# or: docker compose up -d --build
+```
+
+---
+
+## Compatibility
+
+| Protocol | Status |
+|----------|--------|
+| Codec 8 (`0x08`) | Supported |
+| Codec 8 Extended (`0x8E`) | **Not supported** |
+| Codec JSON | **Not supported** |
+
+See [`docs/TELTONIKA-COMPATIBILITY.md`](docs/TELTONIKA-COMPATIBILITY.md).
+
+---
+
+## License
+
+Proprietary — Kodikz / Giant Phoenix LLC. Internal and licensed deployment only.

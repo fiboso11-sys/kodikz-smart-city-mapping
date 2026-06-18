@@ -1,8 +1,17 @@
 node_modules
+backend/node_modules
+backend/logs
+backend/.env
+frontend/node_modules
+frontend/.next
 .next
+.next-release
 .env
 .env.local
+data/
 *.log
 .DS_Store
+tsconfig.tsbuildinfo
+*.zip
 
 .vercel

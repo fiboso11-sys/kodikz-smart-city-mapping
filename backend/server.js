@@ -1,68 +1,77 @@
 /**
- * Kodikz GPS backend — standalone Node.js process for Ubuntu VPS.
- *
- *   TCP  :5000  — Teltonika FMM130 devices (Codec 8)
- *   HTTP :3000  — REST API for Vercel-hosted Next.js frontend
- *
- *   SIMULATION_MODE=true — synthetic GPS into the same store (no TCP)
- *
- * Process manager: PM2 (see ecosystem.config.cjs)
- * Reverse proxy:   Nginx → http://127.0.0.1:3000 (see deploy/nginx/)
- *
- * This service does NOT run on Vercel.
+ * kodikz-gps-backend — production entry point
+ * TCP :5000 (Teltonika FMM130 Codec 8) + HTTP :PORT (REST + Socket.IO)
+ * Domain: api-kodikz.giantphoenixllc.com (Nginx TLS)
  */
 
 const config = require("./config");
-const runtime = require("./runtime");
-const { startTcpServer } = require("./tcp-server");
-const { startApiServer } = require("./api");
-const { startSimulation } = require("./simulation");
-const { logStartupCompatibilityWarnings } = require("./lib/protocol-compat");
+const { connectMongo, disconnectMongo } = require("./config/db");
+const runtime = require("./services/runtime");
+const locationStore = require("./services/locationStore");
+const { startTcpServer } = require("./tcp/server");
+const { createHttpServer } = require("./app");
+const log = require("./services/logger");
 
-console.log("Kodikz GPS Backend");
-console.log(`  NODE_ENV=${config.nodeEnv}`);
-console.log(`  SIMULATION_MODE=${config.simulationMode}`);
-console.log(`  TCP  ${config.host}:${config.tcpPort}`);
-console.log(`  API  ${config.apiHost}:${config.apiPort}`);
+log.info("startup", "kodikz-gps-backend", {
+  domain: config.domain,
+  api: `${config.apiHost}:${config.apiPort}`,
+  tcp: `${config.host}:${config.tcpPort}`,
+  mongo: config.mongoEnabled ? "enabled" : "memory-fallback",
+});
 
-/** @type {import('net').Server | null} */
 let tcpServer = null;
-/** @type {{ stop: () => void } | null} */
-let simulation = null;
+let httpServer = null;
 
-if (config.simulationMode) {
-  console.log("[backend] Simulation active — Teltonika TCP listener disabled");
-  simulation = startSimulation();
-  runtime.setTcpListening(true);
-} else {
-  tcpServer = startTcpServer();
+async function main() {
+  try {
+    const ok = await connectMongo();
+    runtime.setMongoConnected(ok);
+    if (ok) await locationStore.hydrateFromMongo();
+    else log.warn("startup", "MongoDB unavailable — using in-memory store");
+  } catch (err) {
+    log.error("startup", "MongoDB failed", { error: err.message });
+    if (config.mongoEnabled && config.isProduction) process.exit(1);
+  }
+
+  if (!config.simulationMode) {
+    tcpServer = startTcpServer();
+  } else {
+    runtime.setTcpListening(true);
+    log.info("TCP", "Skipped (SIMULATION_MODE)");
+  }
+
+  httpServer = createHttpServer();
+  httpServer.listen(config.apiPort, config.apiHost, () => {
+    runtime.setHttpListening(true);
+    log.info("API", "Listening", {
+      url: `http://${config.apiHost}:${config.apiPort}`,
+      public: config.publicApiUrl,
+    });
+  });
 }
 
-logStartupCompatibilityWarnings(config.simulationMode);
-
-const httpServer = startApiServer();
-
 function shutdown(signal) {
-  console.log(`\n[backend] ${signal} — shutting down...`);
-  simulation?.stop();
+  log.info("shutdown", signal);
   tcpServer?.close();
-  httpServer.close(() => {
-    console.log("[backend] Stopped.");
+  httpServer?.close(async () => {
+    await disconnectMongo().catch(() => {});
     process.exit(0);
   });
   setTimeout(() => process.exit(1), 10000).unref();
 }
 
-function fatalError(kind, err) {
-  console.error(`[backend] ${kind}:`, err);
-  if (config.isProduction) {
-    console.error("[backend] Exiting process (production fatal handler)");
-    process.exit(1);
-  }
-}
-
 process.on("SIGINT", () => shutdown("SIGINT"));
 process.on("SIGTERM", () => shutdown("SIGTERM"));
+process.on("uncaughtException", (err) => {
+  log.error("process", "uncaughtException", { error: err.message });
+  if (config.isProduction) process.exit(1);
+});
+process.on("unhandledRejection", (err) => {
+  log.error("process", "unhandledRejection", { error: String(err) });
+  if (config.isProduction) process.exit(1);
+});
 
-process.on("uncaughtException", (err) => fatalError("uncaughtException", err));
-process.on("unhandledRejection", (err) => fatalError("unhandledRejection", err));
+main().catch((err) => {
+  log.error("startup", "Fatal", { error: err.message });
+  process.exit(1);
+});

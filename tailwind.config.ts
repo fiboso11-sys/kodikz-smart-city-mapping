@@ -6,14 +6,32 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        navy: {
+          950: "#020617",
+          900: "#0a1628",
+          800: "#0f1f38",
+        },
+        gold: {
+          DEFAULT: "#c9a227",
+          light: "#e8c547",
+          dark: "#8a6d12",
+        },
+        "dm-red": {
+          DEFAULT: "#c8102e",
+          light: "#e8354d",
+        },
+        "gis-blue": {
+          DEFAULT: "#1d4ed8",
+          light: "#38bdf8",
+        },
         municipality: {
-          DEFAULT: "#3b82f6",
-          light: "#60a5fa",
-          dark: "#1d4ed8",
+          DEFAULT: "#1d4ed8",
+          light: "#38bdf8",
+          dark: "#1e3a8a",
         },
       },
       boxShadow: {
-        glass: "0 8px 32px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.06)",
+        command: "0 8px 40px rgba(0,0,0,0.55), inset 0 1px 0 rgba(201,162,39,0.08)",
       },
     },
   },

@@ -10,12 +10,28 @@ import { useAppStore } from "@/store";
 import { useFilteredVehicles } from "@/hooks/use-filtered-vehicles";
 import { useActiveViolations } from "@/hooks/use-active-violations";
 
+function canUseWebGL(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    const canvas = document.createElement("canvas");
+    return !!(
+      canvas.getContext("webgl") ||
+      canvas.getContext("webgl2") ||
+      canvas.getContext("experimental-webgl")
+    );
+  } catch {
+    return false;
+  }
+}
+
 export function LiveMap() {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
   const markersRef = useRef(new globalThis.Map<string, Marker>());
   const [zoom, setZoom] = useState<number>(MAP_VIEW.zoom);
   const [mapReady, setMapReady] = useState(false);
+  const [mapError, setMapError] = useState<string | null>(null);
+  const [containerReady, setContainerReady] = useState(false);
 
   const vehicles = useFilteredVehicles();
   const visibleRoutes = useVisibleRoutes();
@@ -30,7 +46,34 @@ export function LiveMap() {
   const replayVehicleId = useAppStore((s) => s.replayVehicleId);
 
   useEffect(() => {
-    if (!containerRef.current || mapRef.current) return;
+    const el = containerRef.current;
+    if (!el) return;
+
+    const check = () => {
+      const { width, height } = el.getBoundingClientRect();
+      if (width > 0 && height > 0) setContainerReady(true);
+    };
+
+    check();
+    const observer = new ResizeObserver(check);
+    observer.observe(el);
+    window.addEventListener("orientationchange", check);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("orientationchange", check);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!containerReady || !containerRef.current || mapRef.current) return;
+
+    if (!canUseWebGL()) {
+      setMapError("WebGL is not available in this browser.");
+      return;
+    }
+
+    const isMobile = window.matchMedia("(max-width: 767px)").matches;
 
     const map = new maplibregl.Map({
       container: containerRef.current,
@@ -39,24 +82,58 @@ export function LiveMap() {
       zoom: MAP_VIEW.zoom,
       pitch: MAP_VIEW.pitch,
       bearing: MAP_VIEW.bearing,
-      antialias: true,
+      antialias: !isMobile,
+      failIfMajorPerformanceCaveat: false,
     });
 
-    map.addControl(new maplibregl.NavigationControl({ visualizePitch: false }), "top-right");
+    map.addControl(
+      new maplibregl.NavigationControl({ visualizePitch: false }),
+      isMobile ? "bottom-right" : "top-right"
+    );
+
+    map.on("error", (e) => {
+      console.error("MapLibre error:", e.error);
+      setMapError("Map tiles failed to load. Check your connection.");
+    });
+
     map.on("zoom", () => setZoom(map.getZoom()));
     map.on("load", () => {
+      map.resize();
       setZoom(map.getZoom());
       setMapReady(true);
+      setMapError(null);
     });
 
     mapRef.current = map;
+
+    const resize = () => map.resize();
+    window.addEventListener("orientationchange", resize);
+    const t1 = window.setTimeout(resize, 100);
+    const t2 = window.setTimeout(resize, 500);
+
     return () => {
+      window.removeEventListener("orientationchange", resize);
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
       markersRef.current.forEach((m) => m.remove());
       map.remove();
       mapRef.current = null;
       setMapReady(false);
     };
-  }, []);
+  }, [containerReady]);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    const map = mapRef.current;
+    if (!container || !map || !mapReady) return;
+
+    const resize = () => map.resize();
+    const observer = new ResizeObserver(resize);
+    observer.observe(container);
+    resize();
+
+    return () => observer.disconnect();
+  }, [mapReady]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -235,8 +312,18 @@ export function LiveMap() {
   ]);
 
   return (
-    <div className="relative h-full w-full overflow-hidden rounded-xl bg-slate-200">
-      <div ref={containerRef} className="h-full w-full" />
+    <div className="map-shell relative w-full overflow-hidden rounded-xl bg-slate-800">
+      <div ref={containerRef} className="absolute inset-0" />
+      {!mapReady && !mapError && (
+        <div className="absolute inset-0 flex items-center justify-center bg-slate-900/80">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-blue-400 border-t-transparent" />
+        </div>
+      )}
+      {mapError && (
+        <div className="absolute inset-0 flex items-center justify-center bg-slate-900 p-4 text-center text-sm text-slate-300">
+          {mapError}
+        </div>
+      )}
       <p className="pointer-events-none absolute bottom-1 right-2 z-10 rounded bg-white/80 px-1.5 text-[10px] text-slate-600">
         © OpenFreeMap · OpenStreetMap
       </p>

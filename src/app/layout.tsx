@@ -1,25 +1,25 @@
 import type { Metadata, Viewport } from "next";
 import "maplibre-gl/dist/maplibre-gl.css";
 import "./globals.css";
+import { APP_NAME, APP_TAGLINE } from "@/lib/config";
 
 export const metadata: Metadata = {
   title: {
-    default: "Kodikz Dubai Mapping",
-    template: "%s · Kodikz Dubai Mapping",
+    default: APP_NAME,
+    template: `%s · ${APP_NAME}`,
   },
-  description:
-    "24/7 GIS mapping fleet monitor for Dubai Municipality Smart City — Live Map, Routes, Violations, Analytics, and more.",
-  applicationName: "Kodikz Dubai Mapping",
+  description: APP_TAGLINE,
+  applicationName: APP_NAME,
   appleWebApp: {
     capable: true,
-    title: "Kodikz Dubai Mapping",
+    title: APP_NAME,
     statusBarStyle: "black-translucent",
   },
   formatDetection: { telephone: false },
   openGraph: {
-    title: "Kodikz Dubai Mapping",
-    description: "Dubai Municipality Smart City GIS mapping vehicle monitor",
-    siteName: "Kodikz Dubai Mapping",
+    title: APP_NAME,
+    description: APP_TAGLINE,
+    siteName: APP_NAME,
     type: "website",
   },
   manifest: "/manifest.json",
@@ -32,13 +32,13 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#030712",
+  themeColor: "#020617",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className="dark scroll-smooth">
-      <body className="min-h-screen bg-[#030712] antialiased">{children}</body>
+      <body className="min-h-screen bg-navy-950 antialiased">{children}</body>
     </html>
   );
 }

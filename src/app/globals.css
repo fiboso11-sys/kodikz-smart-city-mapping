@@ -12,23 +12,50 @@ body {
   color: var(--foreground);
 }
 
-.glass-panel {
-  border: 1px solid rgba(59, 130, 246, 0.2);
-  background: rgba(15, 23, 42, 0.75);
+.glass-panel,
+.command-panel {
+  border: 1px solid rgba(201, 162, 39, 0.15);
+  background: rgba(10, 22, 40, 0.82);
   backdrop-filter: blur(16px);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(201, 162, 39, 0.06);
 }
 
 .maplibregl-popup-content {
-  background: rgba(15, 23, 42, 0.95) !important;
-  border: 1px solid rgba(59, 130, 246, 0.3) !important;
+  background: rgba(10, 22, 40, 0.95) !important;
+  border: 1px solid rgba(201, 162, 39, 0.25) !important;
   color: #f1f5f9 !important;
   border-radius: 12px !important;
 }
 
 .maplibregl-ctrl-group {
-  background: rgba(15, 23, 42, 0.85) !important;
-  border: 1px solid rgba(59, 130, 246, 0.2) !important;
+  background: rgba(10, 22, 40, 0.9) !important;
+  border: 1px solid rgba(29, 78, 216, 0.25) !important;
+}
+
+@media (max-width: 767px) {
+  .maplibregl-ctrl-top-right,
+  .maplibregl-ctrl-bottom-right {
+    right: 8px !important;
+    bottom: 8px !important;
+    top: auto !important;
+  }
+
+  .maplibregl-popup {
+    max-width: min(260px, calc(100vw - 2rem)) !important;
+  }
+
+  /* Explicit map height — flex h-full alone is 0px on many mobile browsers */
+  .map-shell {
+    height: clamp(280px, 52dvh, 520px);
+    min-height: 280px;
+  }
+}
+
+@media (min-width: 768px) {
+  .map-shell {
+    height: 100%;
+    min-height: 320px;
+  }
 }
 
 .landing-mesh {
