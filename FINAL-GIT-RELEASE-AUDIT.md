@@ -3,7 +3,8 @@
 **Date:** 2026-06-18  
 **Branch:** `release/dubai-giscd-phase1-rc`  
 **Base commit:** `7865248` (v1.0-rc1)  
-**Release commit:** pending → see `DUBAI-DEPLOYMENT-PACKAGE.md`
+**Release commit:** `71c483803c9de14bd01fe003b809566270cedc00`  
+**Docs commit:** `52053f803c9de14bd01fe003b809566270cedc00`
 
 ---
 
