@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { PageHeader } from "@/components/shared/page-header";
+import { formatDubaiDateTime } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import { ArrowLeft } from "lucide-react";
 
@@ -80,7 +81,7 @@ export default function SystemHealthPage() {
                 <p className="text-lg font-semibold text-white">{health.overall}</p>
               </div>
               <p className="text-xs text-slate-500">
-                Last check: {new Date(health.checkedAt).toLocaleString("en-AE")}
+                Last check: {formatDubaiDateTime(health.checkedAt)}
               </p>
             </div>
 

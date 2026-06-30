@@ -45,7 +45,7 @@ export default function SettingsPage() {
             <Row label="API URL" value={gpsApiUrl()} mono />
             <Row label="Socket URL" value={socketUrl()} mono />
             <Row label="Map engine" value={`MapLibre GL JS (${mapProvider()})`} />
-            <Row label="Basemap" value="OpenStreetMap raster tiles" />
+            <Row label="Basemap" value="CARTO English (Voyager / Dark / Light)" />
             <Row label="Socket event" value="location_update" mono />
           </dl>
           <div className="mt-4 rounded-lg bg-navy-900 p-3 font-mono text-[11px] text-slate-400">
@@ -72,7 +72,7 @@ export default function SettingsPage() {
             <code>DATABASE_URL</code>
           </div>
           <p className="mt-3 text-xs text-slate-500">
-            No Mapbox token is required. Phase 1 uses free OpenStreetMap tiles via MapLibre GL JS.
+            No Mapbox token is required. Phase 1 uses CARTO English basemaps via MapLibre GL JS.
           </p>
         </section>
       </div>

@@ -1,0 +1,49 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - release/dubai-giscd-phase1-rc
+      - master
+  pull_request:
+    branches:
+      - release/dubai-giscd-phase1-rc
+      - master
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Type-check and Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Type-check
+        run: pnpm type-check
+
+      - name: Build
+        run: pnpm build
+        env:
+          NEXT_PUBLIC_API_URL: https://api-kodikz.giantphoenixllc.com
+          NEXT_PUBLIC_SOCKET_URL: https://api-kodikz.giantphoenixllc.com
+          NEXT_PUBLIC_MAP_PROVIDER: maplibre

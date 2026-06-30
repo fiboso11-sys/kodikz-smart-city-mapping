@@ -6,6 +6,7 @@ import dynamic from "next/dynamic";
 import { PageHeader } from "@/components/shared/page-header";
 import { usePermits, useGeoUploads } from "@/hooks/use-permits";
 import { validateAreaGeoJson, validateRouteGeoJson } from "@/lib/geo/validation";
+import { formatDubaiDateTime } from "@/lib/time";
 import { Upload } from "lucide-react";
 
 const MapView = dynamic(() => import("@/components/maps/MapView").then((m) => m.MapView), {
@@ -241,7 +242,7 @@ export default function GeoUploadPage() {
                     <div>
                       <p className="text-white">{u.name}</p>
                       <p className="text-xs text-slate-500">
-                        {u.type} · {u.permitNumber} · {u.fileName}
+                        {u.type} · {u.permitNumber} · {u.fileName} · {formatDubaiDateTime(u.uploadedAt)}
                       </p>
                     </div>
                     <span className="text-[10px] uppercase text-gis-blue-light">{u.type}</span>

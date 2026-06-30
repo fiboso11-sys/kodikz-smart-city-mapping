@@ -5,11 +5,12 @@ import type { BasemapId } from "@/types";
 import {
   Crosshair,
   Eye,
-  Globe2,
   Layers,
   Map as MapIcon,
   Maximize2,
+  Moon,
   Ruler,
+  Sun,
 } from "lucide-react";
 
 interface MapToolbarProps {
@@ -41,19 +42,27 @@ export function MapToolbar({ onFullscreen, onZoomToDubai }: MapToolbarProps) {
         <div className="command-panel flex items-center gap-1 rounded-xl p-1">
           <button
             type="button"
-            className={btn(basemap === "osm-street")}
-            onClick={() => setBasemap("osm-street" as BasemapId)}
-            title="OSM Street"
+            className={btn(basemap === "english-street")}
+            onClick={() => setBasemap("english-street" as BasemapId)}
+            title="English Street"
           >
             <MapIcon className="h-4 w-4" />
           </button>
           <button
             type="button"
-            className={btn(basemap === "osm-humanitarian")}
-            onClick={() => setBasemap("osm-humanitarian" as BasemapId)}
-            title="OSM Humanitarian"
+            className={btn(basemap === "dark-english")}
+            onClick={() => setBasemap("dark-english" as BasemapId)}
+            title="Dark English"
           >
-            <Globe2 className="h-4 w-4" />
+            <Moon className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            className={btn(basemap === "light-english")}
+            onClick={() => setBasemap("light-english" as BasemapId)}
+            title="Light English"
+          >
+            <Sun className="h-4 w-4" />
           </button>
         </div>
 

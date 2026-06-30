@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { normalizeBasemapId } from "@/lib/geo/map-styles";
 import type { GpsConnectionStatus } from "@/services/gps-service";
 import type { BasemapId, DashboardKpis, MapLayerVisibility } from "@/types";
 import type { VehicleLivePosition } from "@/types/vehicle";
@@ -50,7 +51,7 @@ export const useGisStore = create<GisState>((set) => ({
   socketLive: false,
   gpsError: null,
   lastGpsUpdateAt: null,
-  basemap: "osm-street",
+  basemap: "english-street",
   layers: { vehicles: true, routes: true, areas: true },
   geoUploads: [],
   liveFilter: "all",
@@ -80,7 +81,7 @@ export const useGisStore = create<GisState>((set) => ({
   setConnectionStatus: (connectionStatus, error = null) =>
     set({ connectionStatus, gpsError: error }),
   setSocketLive: (socketLive) => set({ socketLive }),
-  setBasemap: (basemap) => set({ basemap }),
+  setBasemap: (basemap) => set({ basemap: normalizeBasemapId(basemap) }),
   setLayer: (key, visible) => set((s) => ({ layers: { ...s.layers, [key]: visible } })),
   setGeoUploads: (geoUploads) => set({ geoUploads }),
   setLiveFilter: (liveFilter) => set({ liveFilter }),

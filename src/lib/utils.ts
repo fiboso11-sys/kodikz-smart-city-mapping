@@ -1,5 +1,6 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { formatDubaiDateTime } from "@/lib/time";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -10,7 +11,7 @@ export function formatSpeed(kmh: number) {
 }
 
 export function formatTime(iso: string) {
-  return new Date(iso).toLocaleString("en-AE", { timeZone: "Asia/Dubai" });
+  return formatDubaiDateTime(iso);
 }
 
 export const SEVERITY_COLORS = {

@@ -1,9 +1,64 @@
 # Dubai Street Mapping Monitoring System
 
 **Dubai Municipality GIS Center Department (GISCD)**  
-Street Mapping Monitoring & Compliance Platform — Phase 1
+Street Mapping Monitoring & Compliance Platform — Phase 1 Pilot
+
+[![Release](https://img.shields.io/badge/release-v1.0--giscd--pilot-blue)](./RELEASE-NOTES-v1.0-GISCD-PILOT.md)
+[![Branch](https://img.shields.io/badge/branch-release%2Fdubai--giscd--phase1--rc-green)](https://github.com/fiboso11-sys/kodikz-smart-city-mapping/tree/release/dubai-giscd-phase1-rc)
 
 Government-grade Web GIS command center for monitoring street mapping companies operating under official Dubai Municipality permits. Connects to live Teltonika FMM130 GPS data via the production VPS backend.
+
+**Repository:** [fiboso11-sys/kodikz-smart-city-mapping](https://github.com/fiboso11-sys/kodikz-smart-city-mapping)
+
+---
+
+## Project Overview
+
+| Item | Detail |
+|------|--------|
+| **Frontend** | Next.js 15 + TypeScript + Tailwind |
+| **Map** | MapLibre GL JS + CARTO English basemaps |
+| **Database** | SQLite (`data/giscd.db`) |
+| **Realtime** | Socket.IO `location_update` |
+| **GPS Backend** | `https://api-kodikz.giantphoenixllc.com` |
+| **Timezone** | Asia/Dubai (all UI timestamps) |
+
+---
+
+## Architecture
+
+```
+Teltonika FMM130 → VPS GPS Backend → Next.js Portal → Dashboard / Map / CRUD
+                                         ↓
+                                    SQLite (master data)
+```
+
+See [ARCHITECTURE.md](./ARCHITECTURE.md) for full diagrams and data flows.
+
+---
+
+## Folder Structure
+
+```
+kodikz-smart-city-mapping/
+├── src/
+│   ├── app/                    # Next.js App Router (pages + API)
+│   │   ├── (platform)/         # Phase 1 operational modules
+│   │   └── api/                # REST API routes
+│   ├── components/             # UI, maps, dashboard
+│   ├── hooks/                  # React Query hooks
+│   ├── lib/                    # Config, DB, geo, time, repositories
+│   ├── services/               # GPS client, Socket.IO provider
+│   ├── store/                  # Zustand (gis-store)
+│   └── types/                  # TypeScript types
+├── data/                       # SQLite (gitignored)
+├── scripts/                    # Seed generator
+├── .github/                    # PR/issue templates, CODEOWNERS
+├── frontend/                   # ⚠️ Legacy — do not deploy
+├── backend/                    # ⚠️ Legacy GPS server copy — use VPS
+├── .env.example                # Environment template
+└── docs: README, INSTALLATION, CONTRIBUTING, API, DEPLOYMENT, ...
+```
 
 ---
 
@@ -18,149 +73,128 @@ Government-grade Web GIS command center for monitoring street mapping companies 
 | Geo Upload | `/geo-upload` | GeoJSON |
 | Settings | `/settings` | Live |
 | System Health | `/settings/system-health` | Live |
-| Route / Area / Violations / Analytics / Reports | — | Phase 2 |
 
 ---
 
-## Tech Stack
-
-| Layer | Technology |
-|-------|------------|
-| Framework | Next.js 15 App Router · TypeScript · Tailwind CSS |
-| Map | **MapLibre GL JS** + OpenStreetMap (Street + Humanitarian basemaps) |
-| Persistence | **SQLite** (`data/giscd.db`) — repository pattern, PostGIS-ready |
-| Live GPS | **Socket.IO** `location_update` + REST polling |
-| State | Zustand + TanStack Query |
-
-**No Mapbox token required.**
-
----
-
-## Architecture
-
-```
-Teltonika FMM130 (Codec 8, TCP :5000)
-         ↓
-VPS GPS Backend — REST + Socket.IO
-         ↓
-Next.js Portal (this app)
-         ↓
-Dashboard · Live Map · CRUD · GeoJSON · SQLite
-```
-
----
-
-## Installation
+## Quick Start
 
 ```bash
+git clone https://github.com/fiboso11-sys/kodikz-smart-city-mapping.git
+cd kodikz-smart-city-mapping
+git checkout release/dubai-giscd-phase1-rc
 pnpm install
 cp .env.example .env.local
-# Set NEXT_PUBLIC_API_URL and NEXT_PUBLIC_SOCKET_URL
-
-pnpm run build
-pnpm start
-```
-
-Development:
-
-```bash
 pnpm dev
 ```
 
 Open **http://localhost:3000/dashboard**
 
-> Demo seed data (5 vehicles, 4 permits) loads **only** when `NODE_ENV=development`. Production starts with an empty database.
+Full guide: [INSTALLATION.md](./INSTALLATION.md)
 
 ---
 
 ## Environment Variables
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `NEXT_PUBLIC_API_URL` | Yes | GPS REST API e.g. `https://api-kodikz.giantphoenixllc.com` |
-| `NEXT_PUBLIC_SOCKET_URL` | Yes | Socket.IO server (usually same as API URL) |
-| `NEXT_PUBLIC_GPS_API_URL` | Optional | Legacy alias for API URL |
-| `NEXT_PUBLIC_MAP_PROVIDER` | Optional | `maplibre` (default) |
-| `SQLITE_PATH` | Optional | Custom DB path (default: `data/giscd.db`) |
-| `DATABASE_URL` | Phase 2 | PostgreSQL + PostGIS |
+| Variable | Required | Default |
+|----------|----------|---------|
+| `NEXT_PUBLIC_API_URL` | Recommended | `https://api-kodikz.giantphoenixllc.com` |
+| `NEXT_PUBLIC_SOCKET_URL` | Recommended | Same as API URL |
+| `NEXT_PUBLIC_GPS_API_URL` | Optional | Alias for API URL |
+| `NEXT_PUBLIC_MAP_PROVIDER` | Optional | `maplibre` |
+| `SQLITE_PATH` | Optional | `./data/giscd.db` |
 
-Example `.env.local`:
-
-```env
-NEXT_PUBLIC_API_URL=https://api-kodikz.giantphoenixllc.com
-NEXT_PUBLIC_SOCKET_URL=https://api-kodikz.giantphoenixllc.com
-NEXT_PUBLIC_MAP_PROVIDER=maplibre
-```
+Full reference: [ENVIRONMENT.md](./ENVIRONMENT.md)
 
 ---
 
-## GPS Backend Integration
-
-1. Deploy [kodikz-gps-backend](https://github.com/fiboso11-sys/kodikz-gps-backend) on VPS
-2. Configure FMM130 devices: **Codec 8**, TCP port **5000**
-3. Register IMEIs in **Vehicle Master** (`/vehicles`)
-4. Set `NEXT_PUBLIC_API_URL` and `NEXT_PUBLIC_SOCKET_URL`
-5. Live map receives `location_update` via Socket.IO + REST fallback every 5s
-
-### External API Endpoints
-
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/health` | Service health |
-| GET | `/vehicles` or `/vehicles/live` | Live fleet snapshot |
-| GET | `/vehicle/:imei` | Single device |
-| GET | `/history/:imei` | Position history |
-
-### Socket.IO
-
-- **Event:** `location_update`
-- **Payload:** `{ imei, latitude, longitude, speed, heading, timestamp, ... }`
-
----
-
-## API Routes (Next.js)
-
-| Method | Path | Description |
-|--------|------|-------------|
-| GET/POST | `/api/vehicles` | Vehicle master list / create |
-| GET/PUT/DELETE | `/api/vehicles/:id` | Vehicle CRUD |
-| GET | `/api/vehicles/live` | Fleet + GPS merge |
-| GET/POST | `/api/permits` | Permit list / create |
-| GET/PUT/DELETE | `/api/permits/:id` | Permit CRUD |
-| POST | `/api/permits/:id/upload-route` | GeoJSON route upload |
-| POST | `/api/permits/:id/upload-area` | GeoJSON area upload |
-| GET | `/api/geo-uploads` | Uploaded layers |
-| GET | `/api/system-health` | Module status dashboard |
-| GET | `/api/gps/health` | Proxied GPS health |
-
----
-
-## Build & Deploy
+## Build & Run
 
 ```bash
-pnpm run type-check
-pnpm run build
+pnpm type-check
+pnpm build
 pnpm start
 ```
 
-**VPS / Docker:**
+**Windows EPERM workaround:**
 
-- Node.js 20+
-- Writable `data/` directory for SQLite
-- Reverse proxy (nginx/Caddy) with HTTPS
-- Set production env vars on host
-
-**Vercel:** set root directory to project root, add env vars, deploy. Note: SQLite requires a persistent volume — VPS is recommended for production.
+```powershell
+$env:NEXT_DIST_DIR = ".next-release"
+pnpm build && pnpm start
+```
 
 ---
 
-## Phase 2 Roadmap
+## Deploy
 
-- PostgreSQL + PostGIS persistence
-- Route compliance & violation engine
-- SHP / KML / GDB upload
-- Analytics & executive reports
-- SSO / Dubai Municipality identity integration
+| Target | Guide |
+|--------|-------|
+| Vercel | [DEPLOYMENT.md](./DEPLOYMENT.md) |
+| VPS | [DEPLOYMENT.md](./DEPLOYMENT.md) |
+| Dubai handoff | [DUBAI-DEPLOYMENT-PACKAGE.md](./DUBAI-DEPLOYMENT-PACKAGE.md) |
+
+---
+
+## GPS Backend
+
+| Type | Endpoint |
+|------|----------|
+| REST | `GET /health`, `GET /vehicles`, `GET /history/:imei` |
+| Socket.IO | Event `location_update` on `/socket.io` |
+
+Portal API docs: [API.md](./API.md)
+
+---
+
+## Database
+
+- SQLite file at `data/giscd.db`
+- Demo seed (5 vehicles, 4 permits) loads **only** in `NODE_ENV=development`
+- Production starts with empty database
+- Falls back to in-memory if SQLite unavailable
+
+---
+
+## Troubleshooting
+
+| Issue | Solution |
+|-------|----------|
+| GPS disconnected | Check `NEXT_PUBLIC_API_URL`, VPS health |
+| Client crash after rebuild | Stop server, rebuild, restart |
+| Map labels wrong language | Use CARTO English Street basemap (default) |
+| Times show wrong timezone | All UI uses `Asia/Dubai` via `src/lib/time.ts` |
+| Empty fleet in production | Register vehicles in Vehicle Master |
+
+---
+
+## Git Workflow
+
+| Branch | Purpose |
+|--------|---------|
+| `release/dubai-giscd-phase1-rc` | Phase 1 release line |
+| `feature/*` | New work |
+| `fix/*` | Bug fixes |
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md)
+
+---
+
+## Documentation Index
+
+| Document | Purpose |
+|----------|---------|
+| [INSTALLATION.md](./INSTALLATION.md) | Clone, install, run |
+| [CONTRIBUTING.md](./CONTRIBUTING.md) | Branch strategy, PRs |
+| [COLLABORATION.md](./COLLABORATION.md) | GitHub collaboration |
+| [BRANCH-PROTECTION.md](./BRANCH-PROTECTION.md) | Branch protection setup |
+| [ARCHITECTURE.md](./ARCHITECTURE.md) | System design |
+| [API.md](./API.md) | All endpoints |
+| [DEPLOYMENT.md](./DEPLOYMENT.md) | Vercel / VPS |
+| [ENVIRONMENT.md](./ENVIRONMENT.md) | Env variables |
+| [RELEASE-NOTES-v1.0-GISCD-PILOT.md](./RELEASE-NOTES-v1.0-GISCD-PILOT.md) | Release notes |
+| [GITHUB-HANDOFF-SUMMARY.md](./GITHUB-HANDOFF-SUMMARY.md) | GitHub handoff |
+| [DUBAI-HANDOFF-CHECKLIST.md](./DUBAI-HANDOFF-CHECKLIST.md) | Dubai team checklist |
+| [FINAL-E2E-RELEASE-AUDIT.md](./FINAL-E2E-RELEASE-AUDIT.md) | Final audit |
+| [RELEASE-CANDIDATE-REPORT.md](./RELEASE-CANDIDATE-REPORT.md) | RC1 report |
 
 ---
 

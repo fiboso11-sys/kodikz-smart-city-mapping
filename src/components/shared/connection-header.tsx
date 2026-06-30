@@ -2,6 +2,7 @@
 
 import { useGisStore } from "@/store/gis-store";
 import type { GpsConnectionStatus } from "@/services/gps-service";
+import { DUBAI_TIME_LABEL, formatDubaiTime } from "@/lib/time";
 import { cn } from "@/lib/utils";
 
 const STATUS_STYLES: Record<GpsConnectionStatus, string> = {
@@ -40,9 +41,13 @@ export function ConnectionHeader() {
           LIVE
         </div>
       )}
-      {lastGpsUpdateAt && (
+      {lastGpsUpdateAt ? (
         <span className="hidden text-[10px] text-slate-500 lg:inline">
-          Updated {new Date(lastGpsUpdateAt).toLocaleTimeString("en-AE", { hour: "2-digit", minute: "2-digit" })}
+          Updated {formatDubaiTime(lastGpsUpdateAt)} {DUBAI_TIME_LABEL}
+        </span>
+      ) : (
+        <span className="hidden text-[10px] font-medium uppercase tracking-wider text-slate-600 lg:inline">
+          {DUBAI_TIME_LABEL}
         </span>
       )}
     </div>

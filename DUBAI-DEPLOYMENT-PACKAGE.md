@@ -1,7 +1,9 @@
 # Dubai Deployment Package
 
 **Product:** Dubai Street Mapping Monitoring System — GISCD Phase 1  
-**Package date:** 2026-06-18
+**Package date:** 2026-06-18  
+**Release:** `v1.0-giscd-pilot`  
+**Confidence:** 96/100
 
 ---
 
@@ -9,16 +11,15 @@
 
 | Field | Value |
 |-------|-------|
-| **Repository** | Local monorepo `kodikz-smart-city-mapping` |
-| **Repository URL** | *Not configured — add remote and push before Dubai handoff* |
+| **GitHub** | https://github.com/fiboso11-sys/kodikz-smart-city-mapping |
 | **Branch** | `release/dubai-giscd-phase1-rc` |
-| **Commit hash** | `71c483803c9de14bd01fe003b809566270cedc00` |
-| **Commit message** | Dubai GISCD Phase1 Release Candidate |
+| **Tag** | `v1.0-giscd-pilot` |
+| **Deploy from** | Repository root (`src/`) — **not** `frontend/` |
 
-### Clone (after remote is configured)
+### Clone
 
 ```bash
-git clone <REPOSITORY_URL>
+git clone https://github.com/fiboso11-sys/kodikz-smart-city-mapping.git
 cd kodikz-smart-city-mapping
 git checkout release/dubai-giscd-phase1-rc
 ```
@@ -27,111 +28,113 @@ git checkout release/dubai-giscd-phase1-rc
 
 ## Build & Start
 
-Deploy from **repository root** (not `frontend/`).
-
 ```bash
 pnpm install
 cp .env.example .env.local
-# Edit .env.local — set API and Socket URLs
-
-pnpm run type-check
-pnpm run build
+pnpm type-check
+pnpm build
 pnpm start
 ```
 
-### Windows note
-
-If `pnpm build` fails with `EPERM` on `.next/trace`:
+### Windows EPERM
 
 ```powershell
-Get-Process -Name node -ErrorAction SilentlyContinue | Stop-Process -Force
-Remove-Item -Recurse -Force .next -ErrorAction SilentlyContinue
 $env:NEXT_DIST_DIR = ".next-release"
-pnpm run build
-$env:NEXT_DIST_DIR = ".next-release"
+pnpm build
 pnpm start --port 3000
 ```
 
-Linux VPS uses standard `pnpm run build` without workaround.
+---
+
+## Environment Variables (Production)
+
+```env
+NEXT_PUBLIC_API_URL=https://api-kodikz.giantphoenixllc.com
+NEXT_PUBLIC_SOCKET_URL=https://api-kodikz.giantphoenixllc.com
+NEXT_PUBLIC_MAP_PROVIDER=maplibre
+NODE_ENV=production
+```
+
+See [ENVIRONMENT.md](./ENVIRONMENT.md).
 
 ---
 
-## Environment Variables
+## Vercel Deployment
 
-| Variable | Required | Example |
-|----------|----------|---------|
-| `NEXT_PUBLIC_API_URL` | Yes | `https://api-kodikz.giantphoenixllc.com` |
-| `NEXT_PUBLIC_SOCKET_URL` | Yes | `https://api-kodikz.giantphoenixllc.com` |
-| `NEXT_PUBLIC_GPS_API_URL` | Optional | Same as API URL |
-| `NEXT_PUBLIC_MAP_PROVIDER` | No | `maplibre` |
-| `SQLITE_PATH` | No | `data/giscd.db` (default) |
-| `NODE_ENV` | Yes (prod) | `production` — empty DB, no demo seed |
+1. Import `fiboso11-sys/kodikz-smart-city-mapping`
+2. Root directory: `.` (project root)
+3. Set env vars above
+4. Deploy
 
----
+> SQLite is ephemeral on Vercel serverless. Use VPS for durable master data or Phase 2 PostgreSQL.
 
-## Required Ports
-
-| Port | Service | Exposure |
-|------|---------|----------|
-| **3000** | Next.js portal (default) | Public via HTTPS reverse proxy |
-| **443** | HTTPS (nginx/Caddy) | Public |
-| **5000** | Teltonika TCP (GPS backend) | Public to device SIMs |
-| **3000/3001** | GPS backend HTTP API (internal) | Localhost only behind proxy |
-
-> **Note:** Teltonika devices use TCP **5000** (Codec 8). See `backend/config/index.js`.
+Full guide: [DEPLOYMENT.md](./DEPLOYMENT.md)
 
 ---
 
-## Deployment Checklist
+## VPS Deployment (Recommended)
 
-- [ ] Clone `release/dubai-giscd-phase1-rc` branch
-- [ ] `pnpm install` completes (`better-sqlite3` native build)
-- [ ] Copy `.env.example` → `.env.local` with production URLs
-- [ ] `pnpm run build` succeeds
-- [ ] `pnpm start` — app reachable at `/dashboard`
-- [ ] Writable `data/` directory for SQLite
-- [ ] `GET /api/system-health` → `overall: ONLINE`
-- [ ] `GET /api/vehicles` → `count: 0` (production, no demo seed)
-- [ ] GPS backend health: `https://api-kodikz.giantphoenixllc.com/health`
-- [ ] HTTPS reverse proxy configured
-- [ ] Register vehicles via `/vehicles` before expecting live map markers
+| Requirement | Detail |
+|-------------|--------|
+| Node.js | 20+ |
+| pnpm | 10+ |
+| Disk | Writable `data/` for SQLite |
+| HTTPS | nginx / Caddy reverse proxy |
+| Ports | 443 public, 3000 internal |
 
 ---
 
-## Phase 1 Modules Included
+## GPS Backend
 
-| Module | Route |
-|--------|-------|
-| Dashboard | `/dashboard` |
-| Live Monitoring | `/live-monitoring` |
-| Vehicles | `/vehicles` |
-| Permits | `/permits` |
-| Geo Upload | `/geo-upload` |
-| System Health | `/settings/system-health` |
+| Service | URL |
+|---------|-----|
+| REST + Socket.IO | `https://api-kodikz.giantphoenixllc.com` |
+| Teltonika TCP | Port **5000**, Codec 8 |
+
+---
+
+## Phase 1 Features Delivered
+
+- Executive GIS Dashboard
+- Live Monitoring + Socket.IO
+- Vehicle Master / Permit Master CRUD
+- GeoJSON Upload (routes + areas)
+- System Health dashboard
+- MapLibre + CARTO English basemap
+- Dubai timezone (Asia/Dubai)
+- SQLite persistence
+
+---
+
+## Known Limitations (Phase 2)
+
+- PostgreSQL/PostGIS
+- Violations module
+- Analytics & reports
+- SHP/KML/GDB upload
+
+---
+
+## Verification Checklist
+
+- [ ] `/dashboard` loads with Dubai map
+- [ ] Header shows **Dubai Time**
+- [ ] `/api/system-health` → `overall: ONLINE`
+- [ ] GPS header → CONNECTED when VPS reachable
+- [ ] Vehicle Master CRUD works
+- [ ] Permit Master CRUD works
+- [ ] Geo Upload accepts valid GeoJSON
 
 ---
 
 ## Documentation
 
-| Document | Purpose |
-|----------|---------|
-| `README.md` | Install, env, API overview |
-| `DUBAI-HANDOFF-GUIDE.md` | Full handoff procedures |
-| `RELEASE-FILE-MANIFEST.md` | Every file in release |
-| `BUILD-AUDIT.md` | Build verification log |
-| `RELEASE-CANDIDATE-CERTIFICATE.md` | Compliance score |
+| Doc | Purpose |
+|-----|---------|
+| [README.md](./README.md) | Overview |
+| [INSTALLATION.md](./INSTALLATION.md) | Setup |
+| [DEPLOYMENT.md](./DEPLOYMENT.md) | Vercel/VPS |
+| [API.md](./API.md) | Endpoints |
+| [RELEASE-NOTES-v1.0-GISCD-PILOT.md](./RELEASE-NOTES-v1.0-GISCD-PILOT.md) | Release notes |
 
----
-
-## Readiness
-
-| Check | Status |
-|-------|--------|
-| Git commit | ✅ `71c4838` |
-| Build verified | ✅ (see `BUILD-AUDIT.md`) |
-| API verified | ✅ <1s response |
-| Production demo data | ✅ Disabled |
-| Remote push | ⚠️ **Required before Dubai clone** |
-
-**Final score:** **94 / 100**  
-**Status:** **READY FOR DUBAI** — after `git push` to accessible remote
+**Status:** Approved for Dubai Pilot Deployment

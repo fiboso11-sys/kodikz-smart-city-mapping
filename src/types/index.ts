@@ -3,7 +3,7 @@ export * from "./permit";
 export * from "./geo";
 export * from "./legacy";
 
-export type BasemapId = "osm-street" | "osm-humanitarian";
+export type BasemapId = "english-street" | "dark-english" | "light-english";
 
 export interface MapLayerVisibility {
   vehicles: boolean;
