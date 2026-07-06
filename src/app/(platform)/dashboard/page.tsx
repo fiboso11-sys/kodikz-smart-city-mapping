@@ -56,7 +56,7 @@ export default function DashboardPage() {
           />
         </div>
 
-        <div className="relative min-h-[360px] p-3 lg:min-h-0">
+        <div className="relative min-h-[360px] h-full p-3 lg:min-h-0">
           {isLoading ? (
             <div className="command-panel flex h-full items-center justify-center text-sm text-slate-400">
               Loading fleet GIS layer…

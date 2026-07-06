@@ -65,21 +65,10 @@ function addOperationalLayers(map: MapLibreMap) {
       filter: ["has", "point_count"],
       paint: {
         "circle-color": "#1e40af",
-        "circle-radius": ["step", ["get", "point_count"], 18, 5, 24, 15, 30],
+        "circle-radius": ["step", ["get", "point_count"], 20, 5, 26, 15, 32],
         "circle-stroke-width": 2,
         "circle-stroke-color": "#c9a227",
       },
-    });
-  }
-
-  if (!map.getLayer("cluster-count")) {
-    map.addLayer({
-      id: "cluster-count",
-      type: "symbol",
-      source: "vehicles",
-      filter: ["has", "point_count"],
-      layout: { "text-field": ["get", "point_count_abbreviated"], "text-size": 12 },
-      paint: { "text-color": "#ffffff" },
     });
   }
 
@@ -254,13 +243,29 @@ export function MapView({
     map.addControl(new maplibregl.AttributionControl({ compact: true }), "bottom-left");
 
     map.on("load", () => {
-      addOperationalLayers(map);
+      try {
+        addOperationalLayers(map);
+      } catch (err) {
+        console.error("Map layer init error:", err);
+      }
+      map.resize();
       setMapReady(true);
+    });
+    map.on("error", (e) => {
+      console.error("MapLibre error:", e.error?.message ?? e);
     });
     map.on("mousemove", (e) => setCursorCoords([e.lngLat.lng, e.lngLat.lat]));
 
     mapRef.current = map;
+
+    const resize = () => map.resize();
+    const observer = new ResizeObserver(resize);
+    observer.observe(containerRef.current);
+    window.addEventListener("orientationchange", resize);
+
     return () => {
+      observer.disconnect();
+      window.removeEventListener("orientationchange", resize);
       if (pulseRef.current) cancelAnimationFrame(pulseRef.current);
       markersRef.current.forEach((m) => m.remove());
       markersRef.current.clear();
@@ -302,7 +307,6 @@ export function MapView({
     if (src) src.setData(vehiclesToGeoJson(vehicles));
 
     setLayerVisibility(map, "clusters", layers.vehicles);
-    setLayerVisibility(map, "cluster-count", layers.vehicles);
     setLayerVisibility(map, "vehicle-points", layers.vehicles);
     setLayerVisibility(map, "vehicle-selected-ring", layers.vehicles);
 
@@ -515,7 +519,7 @@ export function MapView({
   const fullscreen = () => containerRef.current?.requestFullscreen?.();
 
   return (
-    <div className={`relative h-full min-h-[320px] overflow-hidden rounded-xl ${className}`}>
+    <div className={`gis-map-viewport relative h-full min-h-[360px] overflow-hidden rounded-xl ${className}`}>
       <div ref={containerRef} className="absolute inset-0" />
       <MapToolbar onFullscreen={fullscreen} onZoomToDubai={zoomToDubai} />
       {measureLabel && (
