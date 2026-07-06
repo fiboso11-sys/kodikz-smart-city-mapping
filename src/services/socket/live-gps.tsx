@@ -1,31 +1,64 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import { io, type Socket } from "socket.io-client";
+import { useEffect } from "react";
 import {
   fetchGpsHealth,
   fetchLiveVehicles,
-  getSocketUrl,
   type GpsConnectionStatus,
 } from "@/services/gps-service";
+import { getGpsSocket, teardownGpsSocket } from "@/services/socket/gps-socket";
 import { useGisStore } from "@/store/gis-store";
 import type { VehicleLivePosition, VehicleWithLive } from "@/types";
 
 const POLL_MS = 5000;
+const DISCONNECT_GRACE_MS = 5000;
 
 export function LiveGpsProvider({ children }: { children: React.ReactNode }) {
-  const setLiveBatch = useGisStore((s) => s.setLiveBatch);
-  const setLivePosition = useGisStore((s) => s.setLivePosition);
-  const setConnectionStatus = useGisStore((s) => s.setConnectionStatus);
-  const setSocketLive = useGisStore((s) => s.setSocketLive);
-  const socketRef = useRef<Socket | null>(null);
-
   useEffect(() => {
     let pollTimer: ReturnType<typeof setInterval> | null = null;
+    let disconnectTimer: ReturnType<typeof setTimeout> | null = null;
     let active = true;
+    let socketConnected = false;
+    let lastConnectedAt = 0;
 
-    const setStatus = (status: GpsConnectionStatus, error: string | null = null) => {
-      if (active) setConnectionStatus(status, error);
+    const {
+      setLiveBatch,
+      setLivePosition,
+      setConnectionStatus,
+      setSocketLive,
+    } = useGisStore.getState();
+
+    const clearDisconnectGrace = () => {
+      if (disconnectTimer) {
+        clearTimeout(disconnectTimer);
+        disconnectTimer = null;
+      }
+    };
+
+    const applyStatus = (status: GpsConnectionStatus, error: string | null = null) => {
+      if (!active) return;
+      setConnectionStatus(status, error);
+    };
+
+    const markConnected = (error: string | null = null) => {
+      clearDisconnectGrace();
+      lastConnectedAt = Date.now();
+      applyStatus("CONNECTED", error);
+    };
+
+    const scheduleDegradedStatus = (next: GpsConnectionStatus, error: string | null) => {
+      clearDisconnectGrace();
+      if (Date.now() - lastConnectedAt < DISCONNECT_GRACE_MS && socketConnected) {
+        return;
+      }
+      disconnectTimer = setTimeout(() => {
+        if (!active) return;
+        if (socketConnected && next !== "DISCONNECTED") {
+          markConnected(error);
+          return;
+        }
+        applyStatus(next, error);
+      }, DISCONNECT_GRACE_MS);
     };
 
     const pullFleet = async () => {
@@ -38,26 +71,22 @@ export function LiveGpsProvider({ children }: { children: React.ReactNode }) {
           .map((v) => v.live as VehicleLivePosition);
         if (positions.length) setLiveBatch(positions);
       } catch {
-        /* fleet merge is supplementary */
+        /* supplementary merge */
       }
     };
 
     const pullGps = async () => {
       try {
-        setStatus("RECONNECTING");
         await fetchGpsHealth();
         const positions = await fetchLiveVehicles();
         if (!active) return;
-        if (positions.length) {
-          setLiveBatch(positions);
-          setStatus("CONNECTED", null);
-        } else {
-          setStatus("CONNECTED", "No live device data yet");
-        }
+        if (positions.length) setLiveBatch(positions);
+        markConnected(positions.length ? null : "No live device data yet");
       } catch (err) {
         if (!active) return;
         const msg = err instanceof Error ? err.message : "GPS backend unreachable";
-        setStatus("DISCONNECTED", msg);
+        if (socketConnected) return;
+        scheduleDegradedStatus("DISCONNECTED", msg);
       }
     };
 
@@ -68,52 +97,58 @@ export function LiveGpsProvider({ children }: { children: React.ReactNode }) {
       void pullFleet();
     }, POLL_MS);
 
-    try {
-      const socket = io(getSocketUrl(), {
-        path: "/socket.io",
-        transports: ["websocket", "polling"],
-        reconnection: true,
-        reconnectionAttempts: Infinity,
-        reconnectionDelay: 2000,
-      });
-      socketRef.current = socket;
+    const socket = getGpsSocket();
 
-      socket.on("connect", () => {
-        setStatus("CONNECTED", null);
-        setSocketLive(true);
-      });
+    const onConnect = () => {
+      socketConnected = true;
+      setSocketLive(true);
+      markConnected(null);
+    };
 
-      socket.io.on("reconnect_attempt", () => {
-        setStatus("RECONNECTING");
-      });
+    const onDisconnect = () => {
+      socketConnected = false;
+      setSocketLive(false);
+      scheduleDegradedStatus("RECONNECTING", "Socket disconnected");
+    };
 
-      socket.on("disconnect", () => {
-        setSocketLive(false);
-        setStatus("DISCONNECTED", "Socket disconnected");
-      });
+    const onConnectError = () => {
+      socketConnected = false;
+      setSocketLive(false);
+      scheduleDegradedStatus("RECONNECTING", "Socket connection error");
+    };
 
-      socket.on("connect_error", () => {
-        setStatus("RECONNECTING", "Socket connection error");
-      });
+    const onReconnectAttempt = () => {
+      scheduleDegradedStatus("RECONNECTING", "Reconnecting to GPS stream…");
+    };
 
-      socket.on("location_update", (payload: VehicleLivePosition) => {
-        if (payload?.imei) {
-          setLivePosition(payload);
-          setStatus("CONNECTED", null);
-          setSocketLive(true);
-        }
-      });
-    } catch {
-      setStatus("DISCONNECTED", "Socket init failed");
-    }
+    const onLocation = (payload: VehicleLivePosition) => {
+      if (!payload?.imei) return;
+      setLivePosition(payload);
+      setSocketLive(true);
+      socketConnected = true;
+      markConnected(null);
+    };
+
+    socket.on("connect", onConnect);
+    socket.on("disconnect", onDisconnect);
+    socket.on("connect_error", onConnectError);
+    socket.io.on("reconnect_attempt", onReconnectAttempt);
+    socket.on("location_update", onLocation);
+
+    if (socket.connected) onConnect();
 
     return () => {
       active = false;
+      clearDisconnectGrace();
       if (pollTimer) clearInterval(pollTimer);
-      socketRef.current?.disconnect();
-      socketRef.current = null;
+      socket.off("connect", onConnect);
+      socket.off("disconnect", onDisconnect);
+      socket.off("connect_error", onConnectError);
+      socket.io.off("reconnect_attempt", onReconnectAttempt);
+      socket.off("location_update", onLocation);
+      teardownGpsSocket();
     };
-  }, [setLiveBatch, setLivePosition, setConnectionStatus, setSocketLive]);
+  }, []);
 
   return <>{children}</>;
 }
