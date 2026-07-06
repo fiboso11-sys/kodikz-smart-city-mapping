@@ -67,7 +67,7 @@ export default function LiveMonitoringPage() {
       />
 
       <div className="grid min-h-0 flex-1 grid-cols-1 xl:grid-cols-[1fr_420px]">
-        <div className="min-h-[320px] p-3">
+        <div className="min-h-[360px] h-full p-3">
           <MapView
             vehicles={filtered}
             geoUploadRecords={geoUploads}

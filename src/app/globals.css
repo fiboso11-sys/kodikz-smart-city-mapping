@@ -32,6 +32,18 @@ body {
   border: 1px solid rgba(29, 78, 216, 0.25) !important;
 }
 
+.gis-map-viewport {
+  min-height: 360px;
+  height: 100%;
+}
+
+.gis-map-viewport .maplibregl-map,
+.gis-map-viewport .maplibregl-canvas-container,
+.gis-map-viewport canvas.maplibregl-canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+
 @media (max-width: 767px) {
   .maplibregl-ctrl-top-right,
   .maplibregl-ctrl-bottom-right {

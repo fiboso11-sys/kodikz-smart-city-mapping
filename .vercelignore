@@ -1,0 +1,6 @@
+.next
+.next-release
+node_modules
+data
+*.md
+!README.md

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { deriveLiveStatus } from "@/lib/vehicle-status";
 import { useGisStore } from "@/store/gis-store";
 import type { VehicleMaster, VehicleWithLive } from "@/types";
@@ -28,6 +28,8 @@ export function useVehiclesLive() {
       return data.vehicles as VehicleWithLive[];
     },
     refetchInterval: 5000,
+    placeholderData: keepPreviousData,
+    staleTime: 3000,
   });
 }
 

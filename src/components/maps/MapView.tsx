@@ -2,11 +2,20 @@
 
 import { DUBAI_CENTER, DEFAULT_ZOOM } from "@/lib/config";
 import { buildOsmStyle } from "@/lib/geo/map-styles";
+import {
+  createVehicleMarkerElement,
+  updateVehicleMarkerElement,
+} from "@/lib/geo/vehicle-marker";
 import { liveStatusColor } from "@/lib/vehicle-status";
 import { useGisStore } from "@/store/gis-store";
 import type { VehicleWithLive } from "@/types";
 import type { GeoUploadRecord } from "@/types/geo";
-import maplibregl, { type GeoJSONSource, type Map as MapLibreMap, type MapMouseEvent } from "maplibre-gl";
+import maplibregl, {
+  type GeoJSONSource,
+  type Map as MapLibreMap,
+  type MapMouseEvent,
+  type Marker,
+} from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { MapToolbar } from "./map-toolbar";
@@ -56,21 +65,10 @@ function addOperationalLayers(map: MapLibreMap) {
       filter: ["has", "point_count"],
       paint: {
         "circle-color": "#1e40af",
-        "circle-radius": ["step", ["get", "point_count"], 18, 5, 24, 15, 30],
+        "circle-radius": ["step", ["get", "point_count"], 20, 5, 26, 15, 32],
         "circle-stroke-width": 2,
         "circle-stroke-color": "#c9a227",
       },
-    });
-  }
-
-  if (!map.getLayer("cluster-count")) {
-    map.addLayer({
-      id: "cluster-count",
-      type: "symbol",
-      source: "vehicles",
-      filter: ["has", "point_count"],
-      layout: { "text-field": ["get", "point_count_abbreviated"], "text-size": 12 },
-      paint: { "text-color": "#ffffff" },
     });
   }
 
@@ -82,9 +80,9 @@ function addOperationalLayers(map: MapLibreMap) {
       filter: ["!", ["has", "point_count"]],
       paint: {
         "circle-color": ["get", "color"],
-        "circle-radius": 8,
-        "circle-stroke-width": 2,
-        "circle-stroke-color": "#ffffff",
+        "circle-radius": 0,
+        "circle-opacity": 0,
+        "circle-stroke-width": 0,
       },
     });
   }
@@ -142,11 +140,16 @@ export function MapView({
 }: MapViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
+  const markersRef = useRef(new globalThis.Map<string, Marker>());
   const measurePoints = useRef<[number, number][]>([]);
   const pulseRef = useRef<number | null>(null);
-  const basemapBootstrapped = useRef(false);
+  const basemapRef = useRef<string | null>(null);
+  const lastFlownVehicleRef = useRef<string | null>(null);
+  const onSelectVehicleRef = useRef(onSelectVehicle);
   const [mapReady, setMapReady] = useState(false);
   const [measureLabel, setMeasureLabel] = useState<string | null>(null);
+
+  onSelectVehicleRef.current = onSelectVehicle;
 
   const basemap = useGisStore((s) => s.basemap);
   const layers = useGisStore((s) => s.layers);
@@ -170,6 +173,7 @@ export function MapView({
             status: v.liveStatus,
             color: liveStatusColor(v.liveStatus),
             speed: v.live?.speed ?? 0,
+            heading: v.live?.heading ?? 0,
           },
           geometry: {
             type: "Point",
@@ -239,15 +243,33 @@ export function MapView({
     map.addControl(new maplibregl.AttributionControl({ compact: true }), "bottom-left");
 
     map.on("load", () => {
-      addOperationalLayers(map);
+      try {
+        addOperationalLayers(map);
+      } catch (err) {
+        console.error("Map layer init error:", err);
+      }
+      map.resize();
       setMapReady(true);
+    });
+    map.on("error", (e) => {
+      console.error("MapLibre error:", e.error?.message ?? e);
     });
     map.on("mousemove", (e) => setCursorCoords([e.lngLat.lng, e.lngLat.lat]));
 
     mapRef.current = map;
+
+    const resize = () => map.resize();
+    const observer = new ResizeObserver(resize);
+    observer.observe(containerRef.current);
+    window.addEventListener("orientationchange", resize);
+
     return () => {
+      observer.disconnect();
+      window.removeEventListener("orientationchange", resize);
       if (pulseRef.current) cancelAnimationFrame(pulseRef.current);
-      basemapBootstrapped.current = false;
+      markersRef.current.forEach((m) => m.remove());
+      markersRef.current.clear();
+      basemapRef.current = null;
       map.remove();
       mapRef.current = null;
       setMapReady(false);
@@ -258,21 +280,22 @@ export function MapView({
     const map = mapRef.current;
     if (!map || !mapReady) return;
 
-    if (!basemapBootstrapped.current) {
-      basemapBootstrapped.current = true;
+    if (basemapRef.current === null) {
+      basemapRef.current = basemap;
       return;
     }
+    if (basemapRef.current === basemap) return;
+
+    basemapRef.current = basemap;
 
     const onStyleReady = () => {
       addOperationalLayers(map);
       refreshGeoLayers(map, geoUploadRecords);
-      const src = map.getSource("vehicles") as GeoJSONSource | undefined;
-      src?.setData(vehiclesToGeoJson(vehicles));
     };
 
     map.setStyle(buildOsmStyle(basemap));
     map.once("style.load", onStyleReady);
-  }, [basemap, mapReady, geoUploadRecords, vehicles, vehiclesToGeoJson, refreshGeoLayers]);
+  }, [basemap, mapReady, geoUploadRecords, refreshGeoLayers]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -284,10 +307,80 @@ export function MapView({
     if (src) src.setData(vehiclesToGeoJson(vehicles));
 
     setLayerVisibility(map, "clusters", layers.vehicles);
-    setLayerVisibility(map, "cluster-count", layers.vehicles);
     setLayerVisibility(map, "vehicle-points", layers.vehicles);
     setLayerVisibility(map, "vehicle-selected-ring", layers.vehicles);
-  }, [vehicles, layers.vehicles, vehiclesToGeoJson, mapReady]);
+
+    if (!layers.vehicles) {
+      markersRef.current.forEach((m) => m.remove());
+      markersRef.current.clear();
+      return;
+    }
+
+    const syncMarkers = () => {
+      if (!mapRef.current || !map.isStyleLoaded()) return;
+
+      const showAllMarkers = map.getZoom() >= 14;
+      const unclustered = showAllMarkers
+        ? new Set(vehicles.filter((v) => v.live?.latitude != null).map((v) => v.id))
+        : new Set(
+            map
+              .querySourceFeatures("vehicles")
+              .filter((f) => !f.properties?.point_count && f.properties?.id)
+              .map((f) => String(f.properties!.id))
+          );
+
+      const nextIds = new Set<string>();
+
+      for (const v of vehicles) {
+        if (!v.live?.latitude || !v.live?.longitude) continue;
+        if (!unclustered.has(v.id)) continue;
+
+        nextIds.add(v.id);
+        const heading = v.live.heading ?? 0;
+        const selected = v.id === selectedVehicleId;
+        const existing = markersRef.current.get(v.id);
+
+        if (existing) {
+          existing.setLngLat([v.live.longitude, v.live.latitude]);
+          const el = existing.getElement() as HTMLDivElement;
+          updateVehicleMarkerElement(el, v.liveStatus, heading, selected);
+          continue;
+        }
+
+        const el = createVehicleMarkerElement(v.liveStatus, heading, selected);
+        el.addEventListener("click", (e) => {
+          e.stopPropagation();
+          onSelectVehicleRef.current?.(v.id);
+        });
+
+        const marker = new maplibregl.Marker({ element: el, anchor: "center" })
+          .setLngLat([v.live.longitude, v.live.latitude])
+          .addTo(map);
+        markersRef.current.set(v.id, marker);
+      }
+
+      for (const [id, marker] of markersRef.current) {
+        if (!nextIds.has(id)) {
+          marker.remove();
+          markersRef.current.delete(id);
+        }
+      }
+    };
+
+    if (map.isSourceLoaded("vehicles")) {
+      syncMarkers();
+    } else {
+      map.once("idle", syncMarkers);
+    }
+
+    map.on("zoomend", syncMarkers);
+    map.on("moveend", syncMarkers);
+
+    return () => {
+      map.off("zoomend", syncMarkers);
+      map.off("moveend", syncMarkers);
+    };
+  }, [vehicles, layers.vehicles, selectedVehicleId, vehiclesToGeoJson, mapReady]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -375,10 +468,17 @@ export function MapView({
       if (identifyMode) return;
 
       const features = map.queryRenderedFeatures(e.point, {
-        layers: ["vehicle-points", "clusters"],
+        layers: ["clusters"],
       });
-      if (features[0]?.properties?.id && onSelectVehicle) {
-        onSelectVehicle(String(features[0].properties.id));
+      if (features[0]?.properties?.cluster_id != null) {
+        const clusterId = features[0].properties.cluster_id as number;
+        const source = map.getSource("vehicles") as GeoJSONSource;
+        void source.getClusterExpansionZoom(clusterId).then((zoom) => {
+          const geometry = features[0].geometry;
+          if (geometry.type !== "Point") return;
+          map.easeTo({ center: geometry.coordinates as [number, number], zoom });
+        });
+        return;
       }
     };
 
@@ -399,10 +499,18 @@ export function MapView({
   }, [measureMode]);
 
   useEffect(() => {
+    if (!selectedVehicleId) {
+      lastFlownVehicleRef.current = null;
+      return;
+    }
+    if (lastFlownVehicleRef.current === selectedVehicleId) return;
+
     const map = mapRef.current;
-    if (!map || !selectedVehicleId) return;
+    if (!map) return;
+
     const v = vehicles.find((x) => x.id === selectedVehicleId);
     if (v?.live) {
+      lastFlownVehicleRef.current = selectedVehicleId;
       map.flyTo({ center: [v.live.longitude, v.live.latitude], zoom: 14, duration: 800 });
     }
   }, [selectedVehicleId, vehicles]);
@@ -411,7 +519,7 @@ export function MapView({
   const fullscreen = () => containerRef.current?.requestFullscreen?.();
 
   return (
-    <div className={`relative h-full min-h-[320px] overflow-hidden rounded-xl ${className}`}>
+    <div className={`gis-map-viewport relative h-full min-h-[360px] overflow-hidden rounded-xl ${className}`}>
       <div ref={containerRef} className="absolute inset-0" />
       <MapToolbar onFullscreen={fullscreen} onZoomToDubai={zoomToDubai} />
       {measureLabel && (
