@@ -7,39 +7,107 @@ import { formatDubaiDateTime } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import { ArrowLeft } from "lucide-react";
 
-type ModuleStatus = "ONLINE" | "OFFLINE";
+type HealthState = "healthy" | "degraded" | "unavailable" | "unknown" | "not_configured";
 
-interface HealthModule {
-  status: ModuleStatus;
-  detail?: string;
-  url?: string;
-  backend?: string;
-  path?: string | null;
+interface ComponentInfo {
+  status: HealthState;
+  responseTimeMs?: number;
+  lastCheckedAt?: string;
+  message?: string;
+  configured?: boolean;
 }
 
 interface SystemHealthResponse {
-  overall: string;
-  checkedAt: string;
-  modules: {
-    backendApi: HealthModule;
-    socket: HealthModule;
-    database: HealthModule;
-    geoUpload: HealthModule;
+  status: string;
+  product?: string;
+  version?: string;
+  release?: string;
+  gitTag?: string;
+  commitSha?: string;
+  buildTime?: string;
+  environment?: string;
+  uptimeSeconds?: number;
+  migrationVersion?: string;
+  serverTime?: string;
+  timestamp?: string;
+  checkedAt?: string;
+  overall?: string;
+  components?: {
+    application?: ComponentInfo;
+    database?: ComponentInfo;
+    socketIo?: ComponentInfo;
+    gpsBackend?: ComponentInfo;
+    objectStorage?: ComponentInfo;
   };
+  modules?: Record<string, { status: string; detail?: string; backend?: string }>;
 }
 
-function StatusBadge({ status }: { status: ModuleStatus }) {
+const STATE_LABEL: Record<string, string> = {
+  healthy: "HEALTHY",
+  degraded: "DEGRADED",
+  unavailable: "UNAVAILABLE",
+  unknown: "UNKNOWN",
+  not_configured: "NOT CONFIGURED",
+  ONLINE: "HEALTHY",
+  OFFLINE: "UNAVAILABLE",
+  DEGRADED: "DEGRADED",
+};
+
+function StatusBadge({ status }: { status: string }) {
+  const label = STATE_LABEL[status] ?? status.toUpperCase();
+  const tone =
+    label === "HEALTHY"
+      ? "bg-emerald-500/15 text-emerald-400"
+      : label === "DEGRADED" || label === "NOT CONFIGURED" || label === "UNKNOWN"
+        ? "bg-amber-500/15 text-amber-400"
+        : "bg-red-500/15 text-red-400";
   return (
-    <span
-      className={cn(
-        "rounded px-2 py-0.5 text-xs font-semibold uppercase",
-        status === "ONLINE"
-          ? "bg-emerald-500/15 text-emerald-400"
-          : "bg-red-500/15 text-red-400"
-      )}
-    >
-      {status}
+    <span className={cn("rounded px-2 py-0.5 text-xs font-semibold uppercase", tone)}>
+      {label}
     </span>
+  );
+}
+
+function ComponentCard({ title, mod, note }: { title: string; mod?: ComponentInfo; note?: string }) {
+  if (!mod) {
+    return (
+      <section className="command-panel rounded-xl p-5">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-white">{title}</h2>
+          <StatusBadge status="unknown" />
+        </div>
+        <p className="mt-3 text-sm text-slate-400">{note ?? "No data"}</p>
+      </section>
+    );
+  }
+  return (
+    <section className="command-panel rounded-xl p-5">
+      <div className="flex items-center justify-between">
+        <h2 className="text-sm font-semibold text-white">{title}</h2>
+        <StatusBadge status={mod.status} />
+      </div>
+      <dl className="mt-4 space-y-2 text-sm">
+        {typeof mod.configured === "boolean" && (
+          <div className="flex justify-between gap-2">
+            <dt className="text-slate-500">Configured</dt>
+            <dd className="text-slate-300">{mod.configured ? "Yes" : "No"}</dd>
+          </div>
+        )}
+        {typeof mod.responseTimeMs === "number" && (
+          <div className="flex justify-between gap-2">
+            <dt className="text-slate-500">Response</dt>
+            <dd className="text-slate-300">{mod.responseTimeMs} ms</dd>
+          </div>
+        )}
+        {mod.message && (
+          <div className="flex justify-between gap-2">
+            <dt className="text-slate-500">Detail</dt>
+            <dd className="text-right text-slate-300">{mod.message}</dd>
+          </div>
+        )}
+        {note && <p className="pt-1 text-xs text-slate-500">{note}</p>}
+      </dl>
+    </section>
   );
 }
 
@@ -50,8 +118,10 @@ export default function SystemHealthPage() {
   useEffect(() => {
     const load = () => {
       fetch("/api/system-health", { cache: "no-store" })
-        .then((r) => r.json())
-        .then(setHealth)
+        .then(async (r) => {
+          const data = (await r.json()) as SystemHealthResponse;
+          setHealth(data);
+        })
         .catch((e) => setError(e instanceof Error ? e.message : "Failed"));
     };
     load();
@@ -59,9 +129,11 @@ export default function SystemHealthPage() {
     return () => clearInterval(id);
   }, []);
 
+  const c = health?.components;
+
   return (
     <div className="min-h-screen">
-      <PageHeader title="System Health" subtitle="Backend API, Socket.IO, database & geo module status">
+      <PageHeader title="System Health" subtitle="Operational status — safe fields only">
         <Link
           href="/settings"
           className="flex items-center gap-1 rounded-lg px-3 py-2 text-sm text-slate-400 hover:bg-white/5"
@@ -75,58 +147,89 @@ export default function SystemHealthPage() {
 
         {health && (
           <>
-            <div className="command-panel mb-4 flex items-center justify-between rounded-xl p-4">
-              <div>
-                <p className="text-xs text-slate-500">Overall status</p>
-                <p className="text-lg font-semibold text-white">{health.overall}</p>
+            <div className="command-panel mb-4 rounded-xl p-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs text-slate-500">Overall status</p>
+                  <p className="text-lg font-semibold text-white">
+                    <StatusBadge status={health.status || health.overall || "unknown"} />
+                  </p>
+                  {health.product && (
+                    <p className="mt-2 text-xs text-slate-400">{health.product}</p>
+                  )}
+                </div>
+                <div className="text-right text-xs text-slate-500">
+                  <p>Checked: {formatDubaiDateTime(health.serverTime || health.checkedAt || "")}</p>
+                  {typeof health.uptimeSeconds === "number" && (
+                    <p className="mt-1">Uptime: {health.uptimeSeconds}s</p>
+                  )}
+                </div>
               </div>
-              <p className="text-xs text-slate-500">
-                Last check: {formatDubaiDateTime(health.checkedAt)}
-              </p>
+              <dl className="mt-4 grid gap-2 text-xs text-slate-400 sm:grid-cols-2 lg:grid-cols-3">
+                <div>
+                  Version: <span className="text-slate-200">{health.version ?? "—"}</span>
+                </div>
+                <div>
+                  Release: <span className="text-slate-200">{health.release ?? "—"}</span>
+                </div>
+                <div>
+                  Tag: <span className="font-mono text-slate-200">{health.gitTag ?? "—"}</span>
+                </div>
+                <div className="truncate">
+                  Commit:{" "}
+                  <span className="font-mono text-slate-200">
+                    {health.commitSha ? health.commitSha.slice(0, 12) : "—"}
+                  </span>
+                </div>
+                <div>
+                  Environment: <span className="text-slate-200">{health.environment ?? "—"}</span>
+                </div>
+                <div>
+                  Migration: <span className="text-slate-200">{health.migrationVersion ?? "—"}</span>
+                </div>
+                <div className="sm:col-span-2">
+                  Build: <span className="font-mono text-slate-200">{health.buildTime ?? "—"}</span>
+                </div>
+              </dl>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
-              {(
-                [
-                  ["Backend API", health.modules.backendApi],
-                  ["Socket.IO", health.modules.socket],
-                  ["Database", health.modules.database],
-                  ["Geo Upload Module", health.modules.geoUpload],
-                ] as const
-              ).map(([title, mod]) => (
-                <section key={title} className="command-panel rounded-xl p-5">
-                  <div className="flex items-center justify-between">
-                    <h2 className="text-sm font-semibold text-white">{title}</h2>
-                    <StatusBadge status={mod.status} />
-                  </div>
-                  <dl className="mt-4 space-y-2 text-sm">
-                    {mod.url && (
-                      <div className="flex justify-between gap-2">
-                        <dt className="text-slate-500">URL</dt>
-                        <dd className="truncate font-mono text-xs text-slate-300">{mod.url}</dd>
-                      </div>
-                    )}
-                    {mod.backend && (
-                      <div className="flex justify-between gap-2">
-                        <dt className="text-slate-500">Backend</dt>
-                        <dd className="text-slate-300">{mod.backend}</dd>
-                      </div>
-                    )}
-                    {mod.path && (
-                      <div className="flex justify-between gap-2">
-                        <dt className="text-slate-500">Path</dt>
-                        <dd className="truncate font-mono text-xs text-slate-300">{mod.path}</dd>
-                      </div>
-                    )}
-                    {mod.detail && (
-                      <div className="flex justify-between gap-2">
-                        <dt className="text-slate-500">Detail</dt>
-                        <dd className="text-right text-slate-300">{mod.detail}</dd>
-                      </div>
-                    )}
-                  </dl>
-                </section>
-              ))}
+              <ComponentCard title="Application" mod={c?.application} />
+              <ComponentCard
+                title="Database"
+                mod={c?.database}
+                note="Application database — paths and connection strings are not shown"
+              />
+              <ComponentCard
+                title="GPS Backend"
+                mod={c?.gpsBackend}
+                note="External integration"
+              />
+              <ComponentCard
+                title="Socket.IO"
+                mod={c?.socketIo}
+                note="External GPS realtime channel"
+              />
+              <ComponentCard
+                title="Object Storage"
+                mod={c?.objectStorage}
+                note="Not configured is normal in local mode"
+              />
+              {health.modules?.geoUpload && (
+                <ComponentCard
+                  title="Geo Upload Module"
+                  mod={{
+                    status:
+                      health.modules.geoUpload.status === "ONLINE"
+                        ? "healthy"
+                        : health.modules.geoUpload.status === "DEGRADED"
+                          ? "degraded"
+                          : "unavailable",
+                    message: health.modules.geoUpload.detail,
+                    configured: true,
+                  }}
+                />
+              )}
             </div>
           </>
         )}

@@ -1,0 +1,16 @@
+{
+  "productName": "Kodikz Smart City Mapping & Survey Guidance Platform",
+  "applicationVersion": "1.0.0",
+  "releaseChannel": "RC1",
+  "gitTag": "v1.0.0-rc1",
+  "gitCommitSha": "8612a33f03db738cffc0bfd6bd089abe3f8fd414",
+  "buildTimestamp": "REQUIRES_DOCKER_BUILD_HOST",
+  "databaseMigrationVersion": "1",
+  "imageName": "kodikz-smart-city-app",
+  "imageTag": "1.0.0-rc1",
+  "imageDigest": "REQUIRES_DOCKER_BUILD_HOST",
+  "workerImageName": "kodikz-smart-city-worker",
+  "workerImageTag": "1.0.0-rc1",
+  "canonicalSource": "src/lib/release-identity.ts",
+  "notes": "Keep handover/RC1-1.0.0/VERSION and this file aligned with release-identity.ts"
+}

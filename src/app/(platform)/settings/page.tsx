@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/shared/page-header";
 import { APP_NAME, APP_SUBTITLE, APP_TAGLINE, gpsApiUrl, mapProvider, socketUrl } from "@/lib/config";
-import { Activity } from "lucide-react";
+import { Activity, Info } from "lucide-react";
 
 export default function SettingsPage() {
   const [health, setHealth] = useState<Record<string, unknown> | null>(null);
@@ -20,12 +20,20 @@ export default function SettingsPage() {
   return (
     <div className="min-h-screen">
       <PageHeader title="Settings" subtitle="Platform configuration & integration status">
-        <Link
-          href="/settings/system-health"
-          className="flex items-center gap-2 rounded-lg bg-gis-blue/20 px-3 py-2 text-sm text-gis-blue-light ring-1 ring-gis-blue/30"
-        >
-          <Activity className="h-4 w-4" /> System Health
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href="/settings/about"
+            className="flex items-center gap-2 rounded-lg bg-white/5 px-3 py-2 text-sm text-slate-200 ring-1 ring-white/10"
+          >
+            <Info className="h-4 w-4" /> About / Version
+          </Link>
+          <Link
+            href="/settings/system-health"
+            className="flex items-center gap-2 rounded-lg bg-gis-blue/20 px-3 py-2 text-sm text-gis-blue-light ring-1 ring-gis-blue/30"
+          >
+            <Activity className="h-4 w-4" /> System Health
+          </Link>
+        </div>
       </PageHeader>
 
       <div className="grid gap-4 p-4 lg:grid-cols-2">

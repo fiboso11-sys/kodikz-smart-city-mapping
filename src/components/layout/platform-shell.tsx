@@ -20,6 +20,7 @@ const mobileLinks = [
   { href: "/geo-upload", key: "geoUpload" as const },
   { href: "/settings", key: "settings" as const },
   { href: "/settings/system-health", key: "systemHealth" as const },
+  { href: "/settings/about", key: "about" as const },
 ] as const;
 
 export function PlatformShell({ children }: { children: React.ReactNode }) {
