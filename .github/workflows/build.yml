@@ -4,10 +4,12 @@ on:
   push:
     branches:
       - release/dubai-giscd-phase1-rc
+      - phase2/dubai-giscd-enhancements
       - master
   pull_request:
     branches:
       - release/dubai-giscd-phase1-rc
+      - phase2/dubai-giscd-enhancements
       - master
 
 concurrency:

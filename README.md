@@ -1,10 +1,26 @@
-# Dubai Street Mapping Monitoring System
+# Kodikz Smart City Mapping & Survey Guidance Platform
+
+**Current release:** **Version 1.0.0 RC1** · Tag `v1.0.0-rc1` · Freeze commit `8612a33f03db738cffc0bfd6bd089abe3f8fd414`
+
+| Audience | Start here |
+|----------|------------|
+| Dubai Infrastructure (deploy) | [`handover/RC1-1.0.0/QUICK-START.md`](./handover/RC1-1.0.0/QUICK-START.md) |
+| Dubai operators (support) | [`handover/RC1-1.0.0/OPERATOR-SUPPORT-GUIDE.md`](./handover/RC1-1.0.0/OPERATOR-SUPPORT-GUIDE.md) |
+| Collaborators (GitHub) | [`CONTRIBUTING.md`](./CONTRIBUTING.md) · [`COLLABORATION-POLICY.md`](./COLLABORATION-POLICY.md) |
+| Release notes | [`RELEASE-NOTES.md`](./RELEASE-NOTES.md) · [`CHANGELOG.md`](./CHANGELOG.md) |
+| Known limitations | [`KNOWN-LIMITATIONS.md`](./KNOWN-LIMITATIONS.md) |
+
+Dubai Municipality GISCD — Street Mapping Monitoring, Survey Guidance, and Compliance (Phase 1 + Survey RC1).
+
+---
+
+# Dubai Street Mapping Monitoring System (Phase 1 baseline)
 
 **Dubai Municipality GIS Center Department (GISCD)**  
-Street Mapping Monitoring & Compliance Platform — Phase 1 Pilot
+Street Mapping Monitoring & Compliance Platform — Phase 1 Pilot (foundation for RC1)
 
-[![Release](https://img.shields.io/badge/release-v1.0--giscd--pilot-blue)](./RELEASE-NOTES-v1.0-GISCD-PILOT.md)
-[![Branch](https://img.shields.io/badge/branch-release%2Fdubai--giscd--phase1--rc-green)](https://github.com/fiboso11-sys/kodikz-smart-city-mapping/tree/release/dubai-giscd-phase1-rc)
+[![Release](https://img.shields.io/badge/release-v1.0.0--rc1-blue)](./RELEASE-NOTES.md)
+[![Branch](https://img.shields.io/badge/branch-phase2%2Fdubai--giscd--enhancements-green)](https://github.com/fiboso11-sys/kodikz-smart-city-mapping/tree/phase2/dubai-giscd-enhancements)
 
 Government-grade Web GIS command center for monitoring street mapping companies operating under official Dubai Municipality permits. Connects to live Teltonika FMM130 GPS data via the production VPS backend.
 

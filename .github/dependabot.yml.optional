@@ -1,0 +1,19 @@
+# Optional — enable only after Kodikz Release Manager approval
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - enhancement
+    commit-message:
+      prefix: chore
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: monthly
+    labels:
+      - dependencies

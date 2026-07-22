@@ -6,27 +6,27 @@
 
 ## Type
 
-- [ ] Bug fix
-- [ ] Feature
+- [ ] Bug fix / hotfix (RC1 policy)
 - [ ] Documentation
-- [ ] Release / deployment
+- [ ] Deployment / operations package
+- [ ] Feature (**not allowed on frozen RC1 without Product approval**)
 - [ ] Refactor (no behavior change)
+
+## Target branch
+
+- [ ] `phase2/dubai-giscd-enhancements` (RC1 working line) **or** documented exception
+- [ ] Hotfix branched from tag `v1.0.0-rc1` when applicable
 
 ## Test Plan
 
-- [ ] `pnpm type-check` passes
+- [ ] `pnpm type-check` / `pnpm lint` passes
 - [ ] `pnpm build` passes
-- [ ] Tested locally at http://localhost:3000/dashboard
-- [ ] API routes verified (if applicable)
-- [ ] GPS / map tested (if applicable)
-
-## Screenshots
-
-<!-- If UI changes -->
+- [ ] Relevant UAT / RBAC (if auth or survey touched)
+- [ ] No secrets or `.env` files committed
 
 ## Checklist
 
-- [ ] No secrets or `.env` files committed
-- [ ] Changes target `release/dubai-giscd-phase1-rc` (or documented exception)
+- [ ] Follows `COLLABORATION-POLICY.md` and `RC1-HOTFIX-POLICY.md`
 - [ ] Documentation updated if needed
 - [ ] No unrelated changes
+- [ ] Dubai impact noted (none / docs / deploy scripts / app)

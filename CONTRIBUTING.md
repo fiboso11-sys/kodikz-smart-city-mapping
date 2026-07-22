@@ -62,12 +62,33 @@ Example: `fix: format GPS timestamps in Dubai timezone`
 
 - Squash or merge commit — team preference; keep history readable
 - Delete feature branch after merge
-- Tag releases per [RELEASE-NOTES-v1.0-GISCD-PILOT.md](./RELEASE-NOTES-v1.0-GISCD-PILOT.md)
+- Tag releases per [RELEASE-NOTES.md](./RELEASE-NOTES.md) / [CHANGELOG.md](./CHANGELOG.md)
 
 ## Canonical Codebase
 
-Deploy and develop from **repository root** (`src/`). Legacy folders `frontend/` and `backend/` are archived references — do not extend them for Phase 1.
+Deploy and develop from **repository root** (`src/`). Legacy folders `frontend/` and `backend/` are archived references — do not extend them for Phase 1 / RC1.
+
+## RC1 1.0.0 collaboration (current)
+
+| Item | Value |
+|------|--------|
+| Product version | **1.0.0 RC1** |
+| Git tag | `v1.0.0-rc1` |
+| Working branch | `phase2/dubai-giscd-enhancements` |
+| Frozen functionality | Survey workflows, APIs, UI architecture, DB design — **no drive-by changes** |
+
+### Rules for RC1
+
+1. Create a feature/fix/docs/hotfix branch — **never** commit directly to protected branches
+2. Open a Pull Request; fill the PR template
+3. Pass CI (`Type-check and Build`) and required reviews
+4. Hotfixes must follow [`RC1-HOTFIX-POLICY.md`](./RC1-HOTFIX-POLICY.md)
+5. Never commit secrets, support bundles, certificates, or `.env` files
+6. Dubai deploy uses `handover/RC1-1.0.0/` — do not require source inspection for operations
+
+Full policy: [`COLLABORATION-POLICY.md`](./COLLABORATION-POLICY.md)
 
 ## Questions
 
-Open a GitHub issue with label `question` or contact the repository maintainers.
+Open a GitHub issue with label `question` or contact the repository maintainers.  
+Security: [`SECURITY.md`](./SECURITY.md)

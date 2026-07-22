@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Operator support (Dubai host)
+    url: https://github.com/fiboso11-sys/kodikz-smart-city-mapping/blob/phase2/dubai-giscd-enhancements/handover/RC1-1.0.0/OPERATOR-SUPPORT-GUIDE.md
+    about: Use status.sh / support.sh and the Pilot Support Plan for runtime issues.
+  - name: Security reporting
+    url: https://github.com/fiboso11-sys/kodikz-smart-city-mapping/blob/phase2/dubai-giscd-enhancements/SECURITY.md
+    about: Do not file public issues for exploitable vulnerabilities.
