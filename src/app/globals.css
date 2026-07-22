@@ -78,6 +78,18 @@ body {
     0 0 120px rgba(59, 130, 246, 0.12);
 }
 
+/* Survey Copilot — sunlight-readable mobile surfaces */
+.copilot-shell {
+  background:
+    radial-gradient(ellipse 90% 50% at 50% -10%, rgba(30, 64, 175, 0.35), transparent),
+    #030712;
+}
+
+.copilot-shell button:focus-visible {
+  outline: 2px solid rgba(34, 211, 238, 0.8);
+  outline-offset: 2px;
+}
+
 .landing-map-preview {
   background: linear-gradient(165deg, #0f172a 0%, #1e293b 45%, #0c4a6e 100%);
 }

@@ -10,6 +10,11 @@ import maplibregl, { type GeoJSONSource, type Map as MapLibreMap, type MapMouseE
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { MapToolbar } from "./map-toolbar";
+import { useSgeMapOverlay } from "@/hooks/use-sge-map-overlay";
+import {
+  addVehicleMarkerLayers,
+  resetVehicleMarkerImages,
+} from "@/lib/geo/vehicle-marker";
 
 export interface MapViewProps {
   vehicles: VehicleWithLive[];
@@ -69,23 +74,12 @@ function addOperationalLayers(map: MapLibreMap) {
       type: "symbol",
       source: "vehicles",
       filter: ["has", "point_count"],
-      layout: { "text-field": ["get", "point_count_abbreviated"], "text-size": 12 },
-      paint: { "text-color": "#ffffff" },
-    });
-  }
-
-  if (!map.getLayer("vehicle-points")) {
-    map.addLayer({
-      id: "vehicle-points",
-      type: "circle",
-      source: "vehicles",
-      filter: ["!", ["has", "point_count"]],
-      paint: {
-        "circle-color": ["get", "color"],
-        "circle-radius": 8,
-        "circle-stroke-width": 2,
-        "circle-stroke-color": "#ffffff",
+      layout: {
+        "text-field": ["get", "point_count_abbreviated"],
+        "text-font": ["Open Sans Regular", "Arial Unicode MS Regular"],
+        "text-size": 12,
       },
+      paint: { "text-color": "#ffffff" },
     });
   }
 
@@ -104,6 +98,8 @@ function addOperationalLayers(map: MapLibreMap) {
       },
     });
   }
+
+  addVehicleMarkerLayers(map);
 
   if (!map.getSource("history-path")) {
     map.addSource("history-path", {
@@ -155,29 +151,37 @@ export function MapView({
   const setCursorCoords = useGisStore((s) => s.setCursorCoords);
   const historyPath = useGisStore((s) => s.historyPath);
 
-  const vehiclesToGeoJson = useCallback((list: VehicleWithLive[]): GeoJSON.FeatureCollection => {
-    return {
-      type: "FeatureCollection",
-      features: list
-        .filter((v) => v.live?.latitude != null && v.live?.longitude != null)
-        .map((v) => ({
-          type: "Feature",
-          properties: {
-            id: v.id,
-            imei: v.imei,
-            name: v.vehicleName,
-            plate: v.plateNumber,
-            status: v.liveStatus,
-            color: liveStatusColor(v.liveStatus),
-            speed: v.live?.speed ?? 0,
-          },
-          geometry: {
-            type: "Point",
-            coordinates: [v.live!.longitude, v.live!.latitude],
-          },
-        })),
-    };
-  }, []);
+  // Phase 2.1c — SGE map overlay (in-place source updates only)
+  useSgeMapOverlay(mapRef, mapReady);
+
+  const vehiclesToGeoJson = useCallback(
+    (list: VehicleWithLive[], selectedId: string | null): GeoJSON.FeatureCollection => {
+      return {
+        type: "FeatureCollection",
+        features: list
+          .filter((v) => v.live?.latitude != null && v.live?.longitude != null)
+          .map((v) => ({
+            type: "Feature",
+            properties: {
+              id: v.id,
+              imei: v.imei,
+              name: v.vehicleName,
+              plate: v.plateNumber,
+              status: v.liveStatus,
+              color: liveStatusColor(v.liveStatus),
+              speed: v.live?.speed ?? 0,
+              heading: v.live?.heading ?? 0,
+              selected: v.id === selectedId,
+            },
+            geometry: {
+              type: "Point",
+              coordinates: [v.live!.longitude, v.live!.latitude],
+            },
+          })),
+      };
+    },
+    []
+  );
 
   const refreshGeoLayers = useCallback(
     (map: MapLibreMap, uploads: GeoUploadRecord[]) => {
@@ -227,8 +231,9 @@ export function MapView({
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
 
+    const container = containerRef.current;
     const map = new maplibregl.Map({
-      container: containerRef.current,
+      container,
       style: buildOsmStyle(basemap),
       center: DUBAI_CENTER,
       zoom: DEFAULT_ZOOM,
@@ -240,12 +245,24 @@ export function MapView({
 
     map.on("load", () => {
       addOperationalLayers(map);
+      map.resize();
       setMapReady(true);
+    });
+    map.on("error", (e) => {
+      console.error("[MapView]", e.error?.message ?? e);
     });
     map.on("mousemove", (e) => setCursorCoords([e.lngLat.lng, e.lngLat.lat]));
 
+    // MapLibre CSS forces position:relative on the container, so absolute inset-0
+    // cannot size it. Resize when flex/grid parents settle after mount.
+    const ro = new ResizeObserver(() => {
+      map.resize();
+    });
+    ro.observe(container);
+
     mapRef.current = map;
     return () => {
+      ro.disconnect();
       if (pulseRef.current) cancelAnimationFrame(pulseRef.current);
       basemapBootstrapped.current = false;
       map.remove();
@@ -264,15 +281,16 @@ export function MapView({
     }
 
     const onStyleReady = () => {
+      resetVehicleMarkerImages(map);
       addOperationalLayers(map);
       refreshGeoLayers(map, geoUploadRecords);
       const src = map.getSource("vehicles") as GeoJSONSource | undefined;
-      src?.setData(vehiclesToGeoJson(vehicles));
+      src?.setData(vehiclesToGeoJson(vehicles, selectedVehicleId ?? null));
     };
 
     map.setStyle(buildOsmStyle(basemap));
     map.once("style.load", onStyleReady);
-  }, [basemap, mapReady, geoUploadRecords, vehicles, vehiclesToGeoJson, refreshGeoLayers]);
+  }, [basemap, mapReady, geoUploadRecords, vehicles, vehiclesToGeoJson, refreshGeoLayers, selectedVehicleId]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -281,13 +299,13 @@ export function MapView({
     addOperationalLayers(map);
 
     const src = map.getSource("vehicles") as GeoJSONSource | undefined;
-    if (src) src.setData(vehiclesToGeoJson(vehicles));
+    if (src) src.setData(vehiclesToGeoJson(vehicles, selectedVehicleId ?? null));
 
     setLayerVisibility(map, "clusters", layers.vehicles);
     setLayerVisibility(map, "cluster-count", layers.vehicles);
-    setLayerVisibility(map, "vehicle-points", layers.vehicles);
+    setLayerVisibility(map, "vehicle-markers", layers.vehicles);
     setLayerVisibility(map, "vehicle-selected-ring", layers.vehicles);
-  }, [vehicles, layers.vehicles, vehiclesToGeoJson, mapReady]);
+  }, [vehicles, layers.vehicles, vehiclesToGeoJson, mapReady, selectedVehicleId]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -375,7 +393,7 @@ export function MapView({
       if (identifyMode) return;
 
       const features = map.queryRenderedFeatures(e.point, {
-        layers: ["vehicle-points", "clusters"],
+        layers: ["vehicle-markers", "clusters"],
       });
       if (features[0]?.properties?.id && onSelectVehicle) {
         onSelectVehicle(String(features[0].properties.id));
@@ -412,7 +430,9 @@ export function MapView({
 
   return (
     <div className={`relative h-full min-h-[320px] overflow-hidden rounded-xl ${className}`}>
-      <div ref={containerRef} className="absolute inset-0" />
+      {/* h-full (not absolute inset-0): maplibregl-map sets position:relative and
+          overrides Tailwind absolute, which previously collapsed height to 0. */}
+      <div ref={containerRef} className="h-full w-full min-h-[320px]" />
       <MapToolbar onFullscreen={fullscreen} onZoomToDubai={zoomToDubai} />
       {measureLabel && (
         <div className="absolute bottom-14 left-3 z-20 command-panel rounded-lg px-3 py-2 text-sm text-gold">

@@ -35,9 +35,14 @@ export function isGpsConfigured(): boolean {
 }
 
 export function usePostgres(): boolean {
-  return Boolean(process.env.DATABASE_URL?.trim());
+  return Boolean(process.env.DATABASE_URL?.trim() || process.env.POSTGRES_URL?.trim());
 }
 
 export function isDevelopment(): boolean {
-  return process.env.NODE_ENV === "development";
+  const mode = process.env.DEPLOYMENT_MODE?.trim();
+  if (mode === "pilot" || mode === "municipality") return false;
+  if (mode === "local") return true;
+  return process.env.NODE_ENV !== "production";
 }
+
+export { loadAppConfig, getAppConfig, resolveDeploymentMode } from "@/lib/config/app-config";

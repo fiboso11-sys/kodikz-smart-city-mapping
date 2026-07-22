@@ -1,0 +1,36 @@
+# Production / Municipality template — external managed services via environment.
+# Do not force managed Postgres/Redis/S3/OIDC into Compose if Municipality provides them.
+
+services:
+  app:
+    build:
+      context: .
+      target: runner
+    env_file:
+      - .env.municipality
+    restart: unless-stopped
+    expose:
+      - "3000"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/api/readiness').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+  worker:
+    build:
+      context: .
+      target: worker
+    env_file:
+      - .env.municipality
+    restart: unless-stopped
+
+# External (Municipality-managed):
+# DATABASE_URL, S3_*, AUTH_PROVIDER=oidc, REDIS_URL, GPS NEXT_PUBLIC_* URLs, TLS proxy

@@ -1,0 +1,16 @@
+13:28:52 health=200 live=1 source=gps total=6
+13:29:53 health=200 live=1 source=gps total=6
+13:30:55 health=200 live=1 source=gps total=6
+13:31:56 health=200 live=1 source=gps total=6
+13:32:58 health=200 live=1 source=gps total=6
+13:34:00 health=200 live=1 source=gps total=6
+13:35:00 health=200 live=1 source=gps total=6
+13:36:01 FAIL The operation has timed out.
+13:37:09 health=200 live=1 source=gps total=6
+13:38:18 health=200 live=1 source=gps total=6
+13:39:19 health=200 live=1 source=gps total=6
+13:40:20 health=200 live=1 source=gps total=6
+13:41:20 health=200 live=1 source=gps total=6
+13:42:22 health=200 live=1 source=gps total=6
+13:43:22 health=200 live=1 source=gps total=6
+13:44:24 health=200 live=1 source=gps total=6

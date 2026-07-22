@@ -1,0 +1,9 @@
+node_modules
+.next
+.next-release
+.git
+data
+*.md
+.env*
+!**/.env*.example
+agent-transcripts

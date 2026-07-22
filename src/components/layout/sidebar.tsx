@@ -7,9 +7,11 @@ import {
   AlertTriangle,
   BarChart3,
   Car,
+  Compass,
   FileText,
   LayoutDashboard,
   MapPin,
+  Navigation,
   Radio,
   Route,
   Settings,
@@ -20,22 +22,25 @@ import {
 import { cn } from "@/lib/utils";
 import { APP_NAME, APP_SUBTITLE } from "@/lib/config";
 import { useGisStore } from "@/store/gis-store";
+import { useLocaleStore } from "@/lib/i18n";
 
 const phase1Nav = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/live-monitoring", label: "Live Monitoring", icon: Radio },
-  { href: "/vehicles", label: "Vehicles", icon: Car },
-  { href: "/permits", label: "Permits", icon: FileBadge },
-  { href: "/geo-upload", label: "Geo Upload", icon: Upload },
-  { href: "/settings", label: "Settings", icon: Settings },
+  { href: "/dashboard", key: "dashboard" as const, icon: LayoutDashboard },
+  { href: "/live-monitoring", key: "liveMonitoring" as const, icon: Radio },
+  { href: "/vehicles", key: "vehicles" as const, icon: Car },
+  { href: "/permits", key: "permits" as const, icon: FileBadge },
+  { href: "/geo-upload", key: "geoUpload" as const, icon: Upload },
+  { href: "/settings", key: "settings" as const, icon: Settings },
 ];
 
 const phase2Nav = [
-  { href: "/route-management", label: "Route Management", icon: Route },
-  { href: "/area-management", label: "Area Management", icon: Shapes },
-  { href: "/violations", label: "Violations", icon: AlertTriangle },
-  { href: "/analytics", label: "Analytics", icon: BarChart3 },
-  { href: "/reports", label: "Reports", icon: FileText },
+  { href: "/survey-copilot", key: "surveyCopilot" as const, icon: Navigation },
+  { href: "/survey-guidance", key: "commandCenter" as const, icon: Compass },
+  { href: "/route-management", key: "routeManagement" as const, icon: Route },
+  { href: "/area-management", key: "areaManagement" as const, icon: Shapes },
+  { href: "/violations", key: "violations" as const, icon: AlertTriangle },
+  { href: "/analytics", key: "analytics" as const, icon: BarChart3 },
+  { href: "/reports", key: "reports" as const, icon: FileText },
 ];
 
 export function Sidebar() {
@@ -43,9 +48,19 @@ export function Sidebar() {
   const connectionStatus = useGisStore((s) => s.connectionStatus);
   const gpsError = useGisStore((s) => s.gpsError);
   const connected = connectionStatus === "CONNECTED";
+  const messages = useLocaleStore((s) => s.messages);
+  const nav = messages.nav;
+  const chrome = messages.chrome;
+
+  const gpsLabel =
+    connected
+      ? chrome.gpsConnected
+      : connectionStatus === "RECONNECTING"
+        ? chrome.gpsReconnecting
+        : chrome.gpsDisconnected;
 
   return (
-    <aside className="fixed left-0 top-0 z-50 flex h-screen w-64 flex-col border-r border-gold/10 bg-navy-950/95 backdrop-blur-xl">
+    <aside className="fixed start-0 top-0 z-50 flex h-screen w-64 flex-col border-e border-gold/10 bg-navy-950/95 backdrop-blur-xl">
       <Link href="/dashboard">
         <motion.div
           initial={{ opacity: 0, y: -8 }}
@@ -53,9 +68,9 @@ export function Sidebar() {
           className="border-b border-gold/10 p-5 transition-colors hover:bg-white/[0.02]"
         >
           <div className="flex items-center gap-2">
-            <MapPin className="h-5 w-5 text-gold" />
+            <MapPin className="h-5 w-5 shrink-0 text-gold" />
             <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-gis-blue-light">
-              Dubai Municipality
+              {chrome.dubaiMunicipality}
             </p>
           </div>
           <h1 className="mt-2 text-sm font-bold leading-snug text-white">{APP_NAME}</h1>
@@ -65,10 +80,10 @@ export function Sidebar() {
 
       <nav className="flex-1 overflow-y-auto p-3">
         <p className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-slate-600">
-          Phase 1
+          {chrome.phase1}
         </p>
         <div className="space-y-0.5">
-          {phase1Nav.map(({ href, label, icon: Icon }) => {
+          {phase1Nav.map(({ href, key, icon: Icon }) => {
             const active = pathname === href || pathname.startsWith(`${href}/`);
             return (
               <Link key={href} href={href}>
@@ -82,7 +97,7 @@ export function Sidebar() {
                   )}
                 >
                   <Icon className="h-4 w-4 shrink-0" />
-                  {label}
+                  {nav[key]}
                 </motion.div>
               </Link>
             );
@@ -90,22 +105,31 @@ export function Sidebar() {
         </div>
 
         <p className="mt-4 px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-slate-600">
-          Phase 2
+          {chrome.phase2}
         </p>
         <div className="space-y-0.5">
-          {phase2Nav.map(({ href, label, icon: Icon }) => (
-            <Link key={href} href={href}>
-              <motion.div
-                whileHover={{ x: 3 }}
-                className={cn(
-                  "flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-slate-500 hover:bg-white/5 hover:text-slate-400"
-                )}
-              >
-                <Icon className="h-4 w-4 shrink-0 opacity-60" />
-                {label}
-              </motion.div>
-            </Link>
-          ))}
+          {phase2Nav.map(({ href, key, icon: Icon }) => {
+            const active = pathname === href || pathname.startsWith(`${href}/`);
+            const live = href === "/survey-copilot" || href === "/survey-guidance";
+            return (
+              <Link key={href} href={href}>
+                <motion.div
+                  whileHover={{ x: 3 }}
+                  className={cn(
+                    "flex items-center gap-3 rounded-lg px-3 py-2 text-sm",
+                    active
+                      ? "bg-gis-blue/20 text-gis-blue-light ring-1 ring-gis-blue/30"
+                      : live
+                        ? "text-slate-300 hover:bg-white/5 hover:text-white"
+                        : "text-slate-500 hover:bg-white/5 hover:text-slate-400"
+                  )}
+                >
+                  <Icon className={cn("h-4 w-4 shrink-0", !live && !active && "opacity-60")} />
+                  {nav[key]}
+                </motion.div>
+              </Link>
+            );
+          })}
         </div>
       </nav>
 
@@ -114,12 +138,12 @@ export function Sidebar() {
           <div className="flex items-center gap-2">
             <span
               className={cn(
-                "h-2 w-2 rounded-full",
+                "h-2 w-2 shrink-0 rounded-full",
                 connected ? "animate-pulse bg-emerald-400" : connectionStatus === "RECONNECTING" ? "animate-pulse bg-gold" : "bg-dm-red"
               )}
             />
             <span className={connected ? "text-emerald-400" : connectionStatus === "RECONNECTING" ? "text-gold" : "text-dm-red-light"}>
-              {connected ? "GPS Connected" : connectionStatus === "RECONNECTING" ? "GPS Reconnecting" : "GPS Disconnected"}
+              {gpsLabel}
             </span>
           </div>
           {gpsError && <p className="mt-1 text-slate-500">{gpsError}</p>}

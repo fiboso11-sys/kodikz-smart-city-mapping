@@ -8,24 +8,28 @@ import { Sidebar } from "@/components/layout/sidebar";
 import { ConnectionHeader, GpsWarningBanner } from "@/components/shared/connection-header";
 import { APP_NAME } from "@/lib/config";
 import { cn } from "@/lib/utils";
+import { useLocaleStore } from "@/lib/i18n";
 
 const mobileLinks = [
-  { href: "/dashboard", label: "Dashboard" },
-  { href: "/live-monitoring", label: "Live Monitoring" },
-  { href: "/vehicles", label: "Vehicles" },
-  { href: "/permits", label: "Permits" },
-  { href: "/geo-upload", label: "Geo Upload" },
-  { href: "/settings", label: "Settings" },
-  { href: "/settings/system-health", label: "System Health" },
-];
+  { href: "/dashboard", key: "dashboard" as const },
+  { href: "/live-monitoring", key: "liveMonitoring" as const },
+  { href: "/survey-copilot", key: "surveyCopilot" as const },
+  { href: "/survey-guidance", key: "commandCenter" as const },
+  { href: "/vehicles", key: "vehicles" as const },
+  { href: "/permits", key: "permits" as const },
+  { href: "/geo-upload", key: "geoUpload" as const },
+  { href: "/settings", key: "settings" as const },
+  { href: "/settings/system-health", key: "systemHealth" as const },
+] as const;
 
 export function PlatformShell({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
+  const nav = useLocaleStore((s) => s.messages.nav);
 
   return (
     <>
-      <header className="fixed left-0 right-0 top-0 z-[60] flex items-center justify-between border-b border-gold/10 bg-navy-950/95 px-4 py-3 backdrop-blur-md md:hidden">
+      <header className="fixed start-0 end-0 top-0 z-[60] flex items-center justify-between border-b border-gold/10 bg-navy-950/95 px-4 py-3 backdrop-blur-md md:hidden">
         <Link href="/dashboard" className="text-xs font-semibold text-white">
           {APP_NAME}
         </Link>
@@ -52,11 +56,11 @@ export function PlatformShell({ children }: { children: React.ReactNode }) {
 
       <nav
         className={cn(
-          "fixed right-0 top-0 z-[58] flex h-full w-72 flex-col border-l border-gold/10 bg-navy-950 p-4 pt-16 transition-transform md:hidden",
+          "fixed end-0 top-0 z-[58] flex h-full w-72 flex-col border-s border-gold/10 bg-navy-950 p-4 pt-16 transition-transform md:hidden",
           open ? "translate-x-0" : "translate-x-full"
         )}
       >
-        {mobileLinks.map(({ href, label }) => (
+        {mobileLinks.map(({ href, key }) => (
           <Link
             key={href}
             href={href}
@@ -68,7 +72,7 @@ export function PlatformShell({ children }: { children: React.ReactNode }) {
                 : "text-slate-400 hover:bg-white/5"
             )}
           >
-            {label}
+            {nav[key]}
           </Link>
         ))}
       </nav>
@@ -77,11 +81,11 @@ export function PlatformShell({ children }: { children: React.ReactNode }) {
         <Sidebar />
       </div>
 
-      <div className="fixed right-4 top-4 z-[55] hidden md:block">
+      <div className="fixed end-4 top-4 z-[55] hidden md:block">
         <ConnectionHeader />
       </div>
 
-      <main className="min-h-[100dvh] bg-navy-950 pt-14 md:ml-64 md:min-h-screen md:pt-0">
+      <main className="min-h-[100dvh] bg-navy-950 pt-14 md:ms-64 md:min-h-screen md:pt-0">
         <GpsWarningBanner />
         {children}
       </main>

@@ -62,6 +62,124 @@ const SCHEMA_SQL = `
   CREATE INDEX IF NOT EXISTS idx_vehicles_imei ON vehicles(imei);
   CREATE INDEX IF NOT EXISTS idx_permits_number ON permits(permit_number);
   CREATE INDEX IF NOT EXISTS idx_geo_permit ON geo_uploads(permit_id);
+
+  CREATE TABLE IF NOT EXISTS survey_assignments (
+    id TEXT PRIMARY KEY,
+    tenant_id TEXT NOT NULL,
+    vehicle_id TEXT NOT NULL,
+    driver_id TEXT,
+    route_id TEXT NOT NULL,
+    route_name TEXT NOT NULL,
+    permit_id TEXT,
+    survey_type TEXT NOT NULL,
+    priority TEXT NOT NULL,
+    planned_start INTEGER,
+    planned_end INTEGER,
+    actual_start INTEGER,
+    actual_end INTEGER,
+    status TEXT NOT NULL,
+    created_by TEXT NOT NULL,
+    approved_by TEXT,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    geometry_json TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS survey_decisions (
+    id TEXT PRIMARY KEY,
+    tenant_id TEXT NOT NULL,
+    assignment_id TEXT NOT NULL,
+    vehicle_id TEXT NOT NULL,
+    timestamp INTEGER NOT NULL,
+    payload_json TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS survey_alerts (
+    id TEXT PRIMARY KEY,
+    tenant_id TEXT NOT NULL,
+    assignment_id TEXT NOT NULL,
+    vehicle_id TEXT NOT NULL,
+    severity TEXT NOT NULL,
+    category TEXT NOT NULL,
+    message TEXT NOT NULL,
+    timestamp INTEGER NOT NULL,
+    status TEXT NOT NULL,
+    acknowledged_by TEXT,
+    acknowledged_at INTEGER,
+    payload_json TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS survey_blockages (
+    id TEXT PRIMARY KEY,
+    tenant_id TEXT NOT NULL,
+    assignment_id TEXT NOT NULL,
+    vehicle_id TEXT NOT NULL,
+    route_id TEXT NOT NULL,
+    latitude REAL NOT NULL,
+    longitude REAL NOT NULL,
+    timestamp INTEGER NOT NULL,
+    reason TEXT NOT NULL,
+    notes TEXT,
+    photo_ids_json TEXT DEFAULT '[]'
+  );
+
+  CREATE TABLE IF NOT EXISTS survey_photos (
+    id TEXT PRIMARY KEY,
+    tenant_id TEXT NOT NULL,
+    assignment_id TEXT NOT NULL,
+    vehicle_id TEXT NOT NULL,
+    blockage_id TEXT,
+    filename TEXT NOT NULL,
+    stored_path TEXT NOT NULL,
+    size INTEGER NOT NULL,
+    content_type TEXT NOT NULL,
+    timestamp INTEGER NOT NULL,
+    latitude REAL,
+    longitude REAL
+  );
+
+  CREATE TABLE IF NOT EXISTS survey_notifications (
+    id TEXT PRIMARY KEY,
+    tenant_id TEXT NOT NULL,
+    vehicle_id TEXT,
+    assignment_id TEXT,
+    type TEXT NOT NULL,
+    title TEXT NOT NULL,
+    body TEXT NOT NULL,
+    severity TEXT NOT NULL,
+    timestamp INTEGER NOT NULL,
+    read INTEGER NOT NULL DEFAULT 0,
+    acknowledged INTEGER NOT NULL DEFAULT 0,
+    payload_json TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS survey_audit (
+    id TEXT PRIMARY KEY,
+    tenant_id TEXT NOT NULL,
+    assignment_id TEXT,
+    vehicle_id TEXT,
+    actor TEXT NOT NULL,
+    action TEXT NOT NULL,
+    timestamp INTEGER NOT NULL,
+    payload_json TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS survey_progress (
+    assignment_id TEXT PRIMARY KEY,
+    tenant_id TEXT NOT NULL,
+    vehicle_id TEXT NOT NULL,
+    completion_pct REAL NOT NULL,
+    completed_segment_ids_json TEXT NOT NULL,
+    route_state TEXT NOT NULL,
+    updated_at INTEGER NOT NULL
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_survey_asg_vehicle ON survey_assignments(vehicle_id);
+  CREATE INDEX IF NOT EXISTS idx_survey_asg_tenant ON survey_assignments(tenant_id);
+  CREATE INDEX IF NOT EXISTS idx_survey_asg_status ON survey_assignments(status);
+  CREATE INDEX IF NOT EXISTS idx_survey_dec_vehicle ON survey_decisions(vehicle_id);
+  CREATE INDEX IF NOT EXISTS idx_survey_alert_status ON survey_alerts(status);
+  CREATE INDEX IF NOT EXISTS idx_survey_audit_asg ON survey_audit(assignment_id);
 `;
 
 function seedIfEmpty(database: Database.Database) {

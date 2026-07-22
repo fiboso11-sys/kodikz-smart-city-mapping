@@ -6,6 +6,7 @@ frontend/node_modules
 frontend/.next
 .next
 .next-release
+.next-release-rc1
 .env
 .env.local
 data/

@@ -25,6 +25,8 @@ export function normalizeBasemapId(basemap: string | undefined): BasemapId {
 function rasterStyle(tiles: string[], attribution: string): StyleSpecification {
   return {
     version: 8,
+    // Required for symbol layers (cluster-count / vehicle labels) that use text-field.
+    glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
     sources: {
       basemap: {
         type: "raster",

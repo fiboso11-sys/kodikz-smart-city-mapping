@@ -4,6 +4,7 @@ import { useGisStore } from "@/store/gis-store";
 import type { GpsConnectionStatus } from "@/services/gps-service";
 import { DUBAI_TIME_LABEL, formatDubaiTime } from "@/lib/time";
 import { cn } from "@/lib/utils";
+import { useLocaleStore } from "@/lib/i18n";
 
 const STATUS_STYLES: Record<GpsConnectionStatus, string> = {
   CONNECTED: "text-emerald-400 border-emerald-500/30 bg-emerald-500/10",
@@ -15,6 +16,14 @@ export function ConnectionHeader() {
   const connectionStatus = useGisStore((s) => s.connectionStatus);
   const socketLive = useGisStore((s) => s.socketLive);
   const lastGpsUpdateAt = useGisStore((s) => s.lastGpsUpdateAt);
+  const chrome = useLocaleStore((s) => s.messages.chrome);
+
+  const statusLabel =
+    connectionStatus === "CONNECTED"
+      ? chrome.gpsConnected
+      : connectionStatus === "RECONNECTING"
+        ? chrome.gpsReconnecting
+        : chrome.gpsDisconnected;
 
   return (
     <div className="flex items-center gap-2">
@@ -26,7 +35,7 @@ export function ConnectionHeader() {
       >
         <span
           className={cn(
-            "h-2 w-2 rounded-full",
+            "h-2 w-2 shrink-0 rounded-full",
             connectionStatus === "CONNECTED"
               ? "animate-pulse bg-emerald-400"
               : connectionStatus === "RECONNECTING"
@@ -34,11 +43,11 @@ export function ConnectionHeader() {
                 : "bg-dm-red"
           )}
         />
-        GPS {connectionStatus}
+        {statusLabel}
       </div>
       {socketLive && (
         <div className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-cyan-300">
-          LIVE
+          {chrome.gpsLive}
         </div>
       )}
       {lastGpsUpdateAt ? (
@@ -57,13 +66,14 @@ export function ConnectionHeader() {
 export function GpsWarningBanner() {
   const connectionStatus = useGisStore((s) => s.connectionStatus);
   const gpsError = useGisStore((s) => s.gpsError);
+  const chrome = useLocaleStore((s) => s.messages.chrome);
 
   if (connectionStatus === "CONNECTED" && !gpsError?.includes("No live")) return null;
 
   const message =
     connectionStatus === "DISCONNECTED"
-      ? gpsError ?? "GPS backend unavailable — showing master data only"
-      : gpsError ?? "Reconnecting to GPS backend…";
+      ? gpsError ?? chrome.gpsUnavailable
+      : gpsError ?? chrome.reconnectingGps;
 
   return (
     <div

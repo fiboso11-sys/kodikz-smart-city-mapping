@@ -44,7 +44,9 @@ export function LiveGpsProvider({ children }: { children: React.ReactNode }) {
 
     const pullGps = async () => {
       try {
-        setStatus("RECONNECTING");
+        // Do not flash RECONNECTING on every poll — only when already down.
+        const current = useGisStore.getState().connectionStatus;
+        if (current === "DISCONNECTED") setStatus("RECONNECTING");
         await fetchGpsHealth();
         const positions = await fetchLiveVehicles();
         if (!active) return;
@@ -84,7 +86,9 @@ export function LiveGpsProvider({ children }: { children: React.ReactNode }) {
       });
 
       socket.io.on("reconnect_attempt", () => {
-        setStatus("RECONNECTING");
+        if (useGisStore.getState().connectionStatus === "DISCONNECTED") {
+          setStatus("RECONNECTING");
+        }
       });
 
       socket.on("disconnect", () => {
@@ -93,7 +97,9 @@ export function LiveGpsProvider({ children }: { children: React.ReactNode }) {
       });
 
       socket.on("connect_error", () => {
-        setStatus("RECONNECTING", "Socket connection error");
+        if (useGisStore.getState().connectionStatus !== "CONNECTED") {
+          setStatus("RECONNECTING", "Socket connection error");
+        }
       });
 
       socket.on("location_update", (payload: VehicleLivePosition) => {

@@ -10,41 +10,63 @@
     "start": "next start",
     "lint": "tsc --noEmit",
     "type-check": "tsc --noEmit",
-    "seed": "node scripts/generate-seed.mjs"
+    "seed": "node scripts/generate-seed.mjs",
+    "worker": "tsx scripts/worker.ts",
+    "migrate:pg": "tsx -e \"import('./src/lib/db/postgres/migrate.ts').then(m=>m.migratePostgres().then(console.log))\"",
+    "migrate:sqlite-export": "tsx scripts/sqlite-to-postgres.ts export",
+    "migrate:sqlite-to-pg": "tsx scripts/sqlite-to-postgres.ts",
+    "stress:sge": "tsx scripts/stress-sge.ts",
+    "test:sge": "tsx src/engines/sge/__tests__/sge-validation.ts",
+    "test:platform": "tsx src/platform/sge/__tests__/platform-validation.ts",
+    "test:e2e23": "tsx src/services/survey/__tests__/phase23-e2e.ts",
+    "test:rbac": "tsx src/lib/auth/__tests__/rbac-isolation.ts",
+    "test:api-auth": "tsx src/lib/auth/__tests__/api-auth-certification.ts",
+    "test:uat": "tsx src/services/survey/__tests__/phase4-local-uat.ts",
+    "test:certification": "pnpm test:sge && pnpm test:platform && pnpm test:e2e23 && pnpm test:rbac && pnpm test:api-auth && pnpm test:uat && pnpm stress:sge"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1088.0",
+    "@aws-sdk/s3-request-presigner": "^3.1088.0",
     "@radix-ui/react-dialog": "^1.1.4",
     "@radix-ui/react-select": "^2.1.4",
     "@radix-ui/react-slot": "^1.1.1",
     "@radix-ui/react-tabs": "^1.1.2",
     "@tanstack/react-query": "^5.62.8",
+    "bcryptjs": "^3.0.3",
     "better-sqlite3": "^11.8.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "framer-motion": "^11.15.0",
+    "jose": "^6.2.3",
     "lucide-react": "^0.469.0",
     "maplibre-gl": "^4.7.1",
     "next": "^15.1.3",
+    "pg": "^8.22.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "recharts": "^2.15.0",
     "socket.io-client": "^4.8.1",
     "tailwind-merge": "^2.6.0",
     "uuid": "^11.0.5",
+    "zod": "^4.4.3",
     "zustand": "^5.0.2"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.12",
     "@types/node": "^22.10.2",
+    "@types/pg": "^8.20.0",
     "@types/react": "^19.0.2",
     "@types/react-dom": "^19.0.2",
     "@types/uuid": "^10.0.0",
     "autoprefixer": "^10.4.20",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.17",
+    "tsx": "^4.23.1",
     "typescript": "^5.7.2"
   },
   "pnpm": {
-    "onlyBuiltDependencies": ["better-sqlite3"]
+    "onlyBuiltDependencies": [
+      "better-sqlite3"
+    ]
   }
 }

@@ -1,10 +1,16 @@
 "use client";
 
+import { useEffect } from "react";
 import { liveStatusColor, liveStatusLabel } from "@/lib/vehicle-status";
 import { formatSpeed, formatTime } from "@/lib/utils";
 import type { VehicleWithLive } from "@/types";
 import { X } from "lucide-react";
 import { motion } from "framer-motion";
+import { SurveyStatusPanel } from "@/components/sge/survey-status-panel";
+import { RouteAssigner } from "@/components/sge/route-assigner";
+import { BlockageReporter } from "@/components/sge/blockage-reporter";
+import { VoiceLog } from "@/components/sge/voice-log";
+import { useSgeStore } from "@/store/sge-store";
 
 interface VehicleDetailPanelProps {
   vehicle: VehicleWithLive | null;
@@ -12,6 +18,13 @@ interface VehicleDetailPanelProps {
 }
 
 export function VehicleDetailPanel({ vehicle, onClose }: VehicleDetailPanelProps) {
+  const byVehicle = useSgeStore((s) => s.byVehicle);
+  const setFocusedVehicle = useSgeStore((s) => s.setFocusedVehicle);
+
+  useEffect(() => {
+    if (vehicle?.imei) setFocusedVehicle(vehicle.imei);
+  }, [vehicle?.imei, setFocusedVehicle]);
+
   if (!vehicle) {
     return (
       <div className="command-panel flex h-full items-center justify-center p-6 text-center text-sm text-slate-500">
@@ -22,6 +35,7 @@ export function VehicleDetailPanel({ vehicle, onClose }: VehicleDetailPanelProps
 
   const live = vehicle.live;
   const statusColor = liveStatusColor(vehicle.liveStatus);
+  const showSge = Boolean(byVehicle[vehicle.imei]);
 
   return (
     <motion.div
@@ -50,6 +64,13 @@ export function VehicleDetailPanel({ vehicle, onClose }: VehicleDetailPanelProps
           <span className="font-medium text-white">{liveStatusLabel(vehicle.liveStatus)}</span>
         </div>
 
+        <div className="space-y-3 rounded-lg border border-white/10 p-3">
+          <RouteAssigner vehicleId={vehicle.imei} vehicleName={vehicle.vehicleName} />
+          {showSge && <SurveyStatusPanel />}
+          {showSge && <BlockageReporter />}
+          {showSge && <VoiceLog />}
+        </div>
+
         <DetailRow label="IMEI" value={vehicle.imei} mono />
         <DetailRow label="Plate Number" value={vehicle.plateNumber} />
         <DetailRow label="Company" value={vehicle.companyName} />
@@ -61,7 +82,13 @@ export function VehicleDetailPanel({ vehicle, onClose }: VehicleDetailPanelProps
         <DetailRow label="Speed" value={live ? formatSpeed(live.speed) : "—"} />
         <DetailRow
           label="Ignition"
-          value={live?.ignition === null || live?.ignition === undefined ? "—" : live.ignition ? "ON" : "OFF"}
+          value={
+            live?.ignition === null || live?.ignition === undefined
+              ? "—"
+              : live.ignition
+                ? "ON"
+                : "OFF"
+          }
         />
         <DetailRow label="Last Update" value={live ? formatTime(live.timestamp) : "No GPS fix"} />
         <DetailRow label="Latitude" value={live ? live.latitude.toFixed(6) : "—"} mono />
