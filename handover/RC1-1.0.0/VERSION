@@ -1,0 +1,22 @@
+# Sourced by operator scripts — keep aligned with src/lib/release-identity.ts
+PRODUCT_NAME="Kodikz Smart City Mapping & Survey Guidance Platform"
+APP_VERSION=1.0.0
+PACKAGE_VERSION=1.0.0
+RELEASE_CHANNEL=RC1
+GIT_TAG=v1.0.0-rc1
+GIT_COMMIT=8612a33f03db738cffc0bfd6bd089abe3f8fd414
+GIT_BRANCH=phase2/dubai-giscd-enhancements
+RELEASE_NAME=Kodikz Smart City Mapping & Survey Guidance Platform
+POSTGRES_SCHEMA_VERSION=1
+APP_IMAGE=kodikz-smart-city-app:1.0.0-rc1
+WORKER_IMAGE=kodikz-smart-city-worker:1.0.0-rc1
+# Digests filled by build-images.sh / deploy.sh when Docker host available
+APP_IMAGE_DIGEST=REQUIRES_DOCKER_BUILD_HOST
+WORKER_IMAGE_DIGEST=REQUIRES_DOCKER_BUILD_HOST
+BUILD_TIMESTAMP=REQUIRES_DOCKER_BUILD_HOST
+IMAGE_ARCH=linux/amd64
+RUNTIME_USER=kodikz
+APP_PORT=3000
+HEALTHCHECK_PATH=/api/health
+READINESS_PATH=/api/readiness
+SYSTEM_HEALTH_PATH=/api/system-health

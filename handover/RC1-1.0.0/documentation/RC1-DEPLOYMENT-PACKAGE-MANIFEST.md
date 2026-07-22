@@ -9,7 +9,13 @@
 |-----------|---------------------|
 | RC1 / Release Notes | **RC1 1.0.0** (`RELEASE-NOTES.md`) |
 | Application package.json version | `1.0.0` |
-| Frontend / Backend | Single Next.js 15 app |
+| Frontend / Backend | Single Next.js 15 full-stack app image `kodikz-smart-city-app:1.0.0-rc1` |
+| Worker image | `kodikz-smart-city-worker:1.0.0-rc1` |
+| Release identity | `src/lib/release-identity.ts` · `/api/release-identity` |
+| System health | `/settings/system-health` · `/api/system-health` |
+| About / Version | `/settings/about` |
+| Support bundle | `scripts/support.sh` (sanitized) |
+| Plug-and-play compose | `deploy/docker-compose.plugplay.yml` |
 | DB migration version | **1** (`POSTGRES_SCHEMA_VERSION`) |
 | Node | 20.x (host probe v20.20.2) |
 | pnpm | 10.33.4 |

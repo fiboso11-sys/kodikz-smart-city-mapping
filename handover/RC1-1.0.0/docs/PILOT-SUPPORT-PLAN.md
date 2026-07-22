@@ -34,36 +34,18 @@
 
 ## Issue reporting workflow
 
-1. Dubai records the problem, date/time, and affected user/vehicle/tenant (minimal PII).
-2. Run `./scripts/status.sh`.
-3. Run `./scripts/support.sh` and send the sanitized bundle securely.
-4. Kodikz reviews diagnostics and classifies **P0–P4** (see `OPERATOR-SUPPORT-GUIDE.md`).
-5. **P0/P1** follow `RC1-HOTFIX-POLICY.md`.
-6. Infrastructure issues stay with Dubai server team.
-7. Feature requests → future release.
-
 Provide at minimum:
 
-- Pilot site / timestamp (Asia/Dubai or UTC — state which)
+- Pilot site / timestamp (Asia/Dubai)
 - User role (supervisor/driver)
 - URL / page
 - Steps to reproduce
 - Expected vs actual
 - Screenshots
-- Support bundle path / ID — **no secrets**
+- `docker compose logs` excerpt (app/worker/nginx) — **no secrets**
 - Browser console errors (if UI)
 
 Channel: project issue tracker / agreed Dubai↔Kodikz channel (fill contacts below).
-
-### Severity model (internal recommendations — not SLA)
-
-| Code | Meaning |
-|------|---------|
-| P0 | Pilot unavailable or data integrity risk |
-| P1 | Critical workflow blocked |
-| P2 | Major degraded functionality |
-| P3 | Minor issue |
-| P4 | Enhancement |
 
 ---
 

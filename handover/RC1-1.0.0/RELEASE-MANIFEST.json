@@ -1,0 +1,46 @@
+{
+  "version": "1.0.0",
+  "packageVersion": "1.0.0",
+  "release": "RC1",
+  "gitCommit": "8612a33f03db738cffc0bfd6bd089abe3f8fd414",
+  "gitTag": "v1.0.0-rc1",
+  "gitBranch": "phase2/dubai-giscd-enhancements",
+  "buildTimestamp": "REQUIRES_DOCKER_BUILD_HOST",
+  "documentationVersion": "RC1-1.0.0-phase57",
+  "migrationVersion": 1,
+  "canonicalReleaseSource": "src/lib/release-identity.ts",
+  "images": [
+    {
+      "name": "kodikz-smart-city-app",
+      "tag": "1.0.0-rc1",
+      "digest": "REQUIRES_DOCKER_BUILD_HOST",
+      "role": "full-stack-nextjs",
+      "arch": "linux/amd64",
+      "runtimeUser": "kodikz",
+      "port": 3000,
+      "healthcheck": "/api/health"
+    },
+    {
+      "name": "kodikz-smart-city-worker",
+      "tag": "1.0.0-rc1",
+      "digest": "REQUIRES_DOCKER_BUILD_HOST",
+      "role": "worker",
+      "arch": "linux/amd64",
+      "runtimeUser": "kodikz",
+      "port": null,
+      "healthcheck": null
+    }
+  ],
+  "endpoints": {
+    "health": "/api/health",
+    "readiness": "/api/readiness",
+    "systemHealth": "/api/system-health",
+    "releaseIdentity": "/api/release-identity"
+  },
+  "notes": [
+    "Image digests REQUIRES_DOCKER_BUILD_HOST until build-images.sh runs",
+    "Runtime validation REQUIRES_DUBAI_SERVER_VALIDATION",
+    "Diagnostics export: SERVER-SIDE SUPPORT BUNDLE ONLY",
+    "No real secrets included"
+  ]
+}
