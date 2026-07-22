@@ -1,0 +1,30 @@
+# Municipality template — external managed services via env vars.
+# Do not force Municipality infra into Compose if they provide managed equivalents.
+
+services:
+  app:
+    build:
+      context: .
+      target: runner
+    env_file:
+      - .env.municipality
+    restart: unless-stopped
+    expose:
+      - "3000"
+    # Behind Municipality reverse proxy / load balancer
+
+  worker:
+    build:
+      context: .
+      target: worker
+    env_file:
+      - .env.municipality
+    restart: unless-stopped
+
+# External dependencies (provided by Municipality):
+# - PostgreSQL (DATABASE_URL)
+# - S3-compatible storage
+# - Existing GPS MongoDB / Socket.IO backend
+# - Redis when horizontally scaled (REDIS_URL)
+# - OIDC IdP (AUTH_PROVIDER=oidc)
+# - TLS / reverse proxy
