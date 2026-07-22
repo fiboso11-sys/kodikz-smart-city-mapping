@@ -15,8 +15,9 @@ RC1 **1.0.0** has been officially frozen in Git. Application development is clos
 | Field | Value |
 |-------|--------|
 | Release version | **RC1 1.0.0** (`package.json` 1.0.0) |
-| Annotated tag | **`v1.0.0-rc1`** |
-| Commit SHA | **`8612a33f03db738cffc0bfd6bd089abe3f8fd414`** |
+| Annotated tag | **`v1.0.0-rc1`** → app/docs freeze commit |
+| Freeze commit SHA | **`8612a33f03db738cffc0bfd6bd089abe3f8fd414`** |
+| Certificate + handover commit | **`d7edc49`** (same branch, immediately after freeze) |
 | Branch | **`phase2/dubai-giscd-enhancements`** |
 | Freeze timestamp | **2026-07-22 19:50:31 +0530** |
 | Handover folder | **`handover/RC1-1.0.0/`** |
@@ -41,18 +42,22 @@ RC1 **1.0.0** has been officially frozen in Git. Application development is clos
 ## 3. Git information
 
 ```
-Branch:  phase2/dubai-giscd-enhancements
-Commit:  8612a33f03db738cffc0bfd6bd089abe3f8fd414
-Tag:     v1.0.0-rc1 (annotated)
-Message: release: freeze RC1 1.0.0 for Dubai infrastructure handover
-When:    2026-07-22 19:50:31 +0530
+Branch:           phase2/dubai-giscd-enhancements
+Freeze commit:    8612a33f03db738cffc0bfd6bd089abe3f8fd414
+Tag:              v1.0.0-rc1 (annotated) → freeze commit
+Handover commit:  d7edc49 (certificate + handover/RC1-1.0.0)
+Freeze message:   release: freeze RC1 1.0.0 for Dubai infrastructure handover
+When:             2026-07-22 19:50:31 +0530
 ```
 
 Checkout:
 
 ```bash
 git fetch --tags
+# Application freeze line:
 git checkout v1.0.0-rc1
+# Or branch tip including handover folder + this certificate:
+git checkout phase2/dubai-giscd-enhancements
 ```
 
 ---
