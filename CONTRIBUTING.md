@@ -66,7 +66,7 @@ Example: `fix: format GPS timestamps in Dubai timezone`
 
 ## Canonical Codebase
 
-Deploy and develop from **repository root** (`src/`). Legacy folders `frontend/` and `backend/` are archived references — do not extend them for Phase 1 / RC1.
+Deploy and develop from **repository root** (`src/`). Obsolete `frontend/` and `backend/` copies were removed from Git in Phase 6.2 — do not recreate them for Phase 1 / RC1. GPS integrations use the Dubai-managed VPS only.
 
 ## RC1 1.0.0 collaboration (current)
 

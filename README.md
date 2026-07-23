@@ -70,11 +70,12 @@ kodikz-smart-city-mapping/
 ├── data/                       # SQLite (gitignored)
 ├── scripts/                    # Seed generator
 ├── .github/                    # PR/issue templates, CODEOWNERS
-├── frontend/                   # ⚠️ Legacy — do not deploy
-├── backend/                    # ⚠️ Legacy GPS server copy — use VPS
+├── handover/RC1-1.0.0/         # Plug-and-play Dubai handover package
 ├── .env.example                # Environment template
 └── docs: README, INSTALLATION, CONTRIBUTING, API, DEPLOYMENT, ...
 ```
+
+> Obsolete `frontend/` and `backend/` directory copies were **removed from Git** in Phase 6.2. Deploy and develop from the **repository root** only. Live GPS remains the Dubai-managed VPS (`NEXT_PUBLIC_API_URL` / Socket.IO).
 
 ---
 

@@ -13,8 +13,12 @@
 ```bash
 git clone https://github.com/fiboso11-sys/kodikz-smart-city-mapping.git
 cd kodikz-smart-city-mapping
-git checkout release/dubai-giscd-phase1-rc
+# RC1 collaboration line (preferred):
+git checkout phase2/dubai-giscd-enhancements
+# Or after merge: follow the protected default / release branch named by Release Manager
 ```
+
+Install and run from the **repository root** only (not any nested app folders).
 
 ## Install
 

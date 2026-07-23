@@ -30,7 +30,12 @@ See `KNOWN-LIMITATIONS.md` and `handover/RC1-1.0.0/documentation/KNOWN-LIMITATIO
 
 ## [Unreleased]
 
-Post-RC1 work (features, UI enhancements) is deferred until after pilot acceptance unless classified as an approved hotfix.
+### Repository
+
+- Removed obsolete tracked `frontend/` and `backend/` copies from Git (Phase 6.2); RC1 app remains root Next.js + `src/`
+- Added legacy cleanup evidence and GitHub publication readiness certification (Phase 6.3–6.4)
+
+Post-RC1 product features/UI enhancements remain deferred until after pilot acceptance unless classified as an approved hotfix.
 
 ---
 

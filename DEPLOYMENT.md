@@ -5,15 +5,16 @@
 | Item | Value |
 |------|--------|
 | GitHub | `fiboso11-sys/kodikz-smart-city-mapping` |
-| Release branch | `release/dubai-giscd-phase1-rc` |
-| Release tag | `v1.0-giscd-pilot` |
+| RC1 working branch | `phase2/dubai-giscd-enhancements` |
+| RC1 freeze tag | `v1.0.0-rc1` → `8612a33f03db738cffc0bfd6bd089abe3f8fd414` |
+| Phase 1 historical branch | `release/dubai-giscd-phase1-rc` (superseded for RC1 ops) |
 
 ## Vercel (Recommended for Pilot UI)
 
 ### Setup
 
 1. Import repository in [Vercel](https://vercel.com)
-2. **Root directory:** repository root (not `frontend/`)
+2. **Root directory:** repository root (single Next.js app under `src/`)
 3. **Framework:** Next.js (auto-detected)
 4. **Build command:** `pnpm build`
 5. **Install command:** `pnpm install`

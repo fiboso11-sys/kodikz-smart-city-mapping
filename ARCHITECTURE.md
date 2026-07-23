@@ -99,12 +99,12 @@ GitHub (release branch) → Vercel / VPS
                         → pnpm start (VPS) or Vercel serverless
 ```
 
-## Legacy Folders (Do Not Deploy)
+## Legacy / Non-Production Paths
 
-| Folder | Status |
-|--------|--------|
-| `frontend/` | Archived early prototype — excluded from `tsconfig.json` |
-| `backend/` | Separate GPS server project copy — use external VPS |
+| Item | Status |
+|------|--------|
+| Root `frontend/` / `backend/` copies | **Removed from Git** (Phase 6.2) — do not recreate for RC1 |
+| GPS “backend” | External Dubai-managed VPS only (`NEXT_PUBLIC_API_URL`) |
 | `src/components/map/`, `src/store/app-store.ts` | Legacy simulator code — not wired to Phase 1 routes |
 
 ## Phase 2 Extension Points
